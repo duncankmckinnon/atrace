@@ -1,0 +1,30 @@
+[project]
+name = "atrace"
+version = "0.1.0"
+description = "Trace any agentic CLI to a unified local store, queryable from the CLI."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [ { name = "Duncan McKinnon" } ]
+dependencies = [
+  "click",
+  "pyaml",
+]
+
+[project.scripts]
+atrace = "atrace.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[dependency-groups]
+dev = [
+  "pytest",
+]
