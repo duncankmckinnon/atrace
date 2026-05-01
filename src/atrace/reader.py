@@ -42,6 +42,8 @@ class SessionReader:
         offsets.append(log_size)  # sentinel
 
         start, end = seq_range if seq_range is not None else (0, len(offsets) - 1)
+        if start >= end or not self._events.exists():
+            return
         with open(self._events, "rb") as f:
             for seq in range(start, min(end, len(offsets) - 1)):
                 f.seek(offsets[seq])
