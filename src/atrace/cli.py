@@ -4,6 +4,7 @@ import click
 
 from atrace import __version__
 from atrace.commands.ingest import ingest
+from atrace.commands.reads import event, events, list_sessions, search, show, stats, tail
 
 
 @click.group(name="atrace", help="Trace agentic CLIs to a unified local store.")
@@ -13,3 +14,10 @@ def main() -> None:
 
 
 main.add_command(ingest)
+main.add_command(list_sessions)
+main.add_command(show)
+main.add_command(events)
+main.add_command(tail)
+main.add_command(event)
+main.add_command(search)
+main.add_command(stats)
