@@ -284,3 +284,41 @@ class TestIterEventsManual:
         result = list(SessionReader(sd).iter_events(types={"b"}))
         assert len(result) == 1
         assert result[0]["seq"] == 1
+
+
+# -- empty session edge cases (reader.py fix) ----------------------------------
+
+
+class TestEmptySessionEdgeCases:
+    def test_iter_events_no_events_file(self, tmp_path: Path):
+        """Session dir exists with index but no events.alog file."""
+        sd = tmp_path / "no_events"
+        sd.mkdir(parents=True)
+        idxp = index_path(sd)
+        with IndexWriter(idxp) as iw:
+            pass  # empty index
+        result = list(SessionReader(sd).iter_events())
+        assert result == []
+
+    def test_iter_events_no_events_file_with_seq_range(self, tmp_path: Path):
+        """Events file missing + explicit seq_range that would normally iterate."""
+        sd = tmp_path / "no_events_range"
+        sd.mkdir(parents=True)
+        idxp = index_path(sd)
+        # Write a fake index entry pointing at offset 0
+        with IndexWriter(idxp) as iw:
+            iw.append(0)
+        result = list(SessionReader(sd).iter_events(seq_range=(0, 1)))
+        assert result == []
+
+    def test_iter_events_start_equals_end(self, tmp_path: Path):
+        """start == end should yield no events even with valid data."""
+        sd = _make_session(tmp_path, [("a", 1), ("b", 2)])
+        result = list(SessionReader(sd).iter_events(seq_range=(1, 1)))
+        assert result == []
+
+    def test_iter_events_start_greater_than_end(self, tmp_path: Path):
+        """start > end should yield no events."""
+        sd = _make_session(tmp_path, [("a", 1), ("b", 2)])
+        result = list(SessionReader(sd).iter_events(seq_range=(2, 1)))
+        assert result == []
