@@ -16,6 +16,10 @@ def default_root() -> Path:
 class Config:
     root: Path
 
+    @classmethod
+    def load(cls) -> Config:
+        return cls(root=default_root())
+
     @property
     def traces_dir(self) -> Path:
         return self.root / "traces"
@@ -26,4 +30,4 @@ class Config:
 
 
 def load() -> Config:
-    return Config(root=default_root())
+    return Config.load()
