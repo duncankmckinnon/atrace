@@ -471,3 +471,513 @@ def test_ingest_meta_records_platform(tmp_path: Path):
     )
     assert meta["platform"] == "gemini"
     assert meta["session_id"] == "PLAT1"
+
+
+# =============================================================================
+# Read commands
+# =============================================================================
+
+
+def _seed(runner: CliRunner, env: dict, platform: str, sid: str, events: list[dict]) -> None:
+    payload = "\n".join(json.dumps(e) for e in events) + "\n"
+    runner.invoke(
+        main,
+        ["ingest", "--platform", platform, "--session-id", sid, "--cwd", "/proj"],
+        input=payload,
+        env=env,
+    )
+
+
+# -- list command --------------------------------------------------------------
+
+
+def test_list_default_jsonl(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "user_message", "data": "hi"}])
+    r = runner.invoke(main, ["list"], env=env)
+    assert r.exit_code == 0
+    parsed = json.loads(r.output.strip().splitlines()[0])
+    assert parsed["session_id"] == "01J9G7XK4P"
+    assert parsed["platform"] == "claude"
+
+
+def test_list_filter_platform(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "x"}])
+    _seed(runner, env, "cursor", "02ABCDEF12", [{"t": "y"}])
+    r = runner.invoke(main, ["list", "--platform", "cursor"], env=env)
+    assert "02ABCDEF12" in r.output
+    assert "01J9G7XK4P" not in r.output
+
+
+def test_list_filter_cwd(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "x"}])
+    # Seed a second session with different cwd
+    payload = json.dumps({"t": "y"}) + "\n"
+    runner.invoke(
+        main,
+        ["ingest", "--platform", "claude", "--session-id", "02ABCDEF12", "--cwd", "/other"],
+        input=payload,
+        env=env,
+    )
+    r = runner.invoke(main, ["list", "--cwd", "/other"], env=env)
+    assert "02ABCDEF12" in r.output
+    assert "01J9G7XK4P" not in r.output
+
+
+def test_list_filter_status(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "x"}])
+    r = runner.invoke(main, ["list", "--status", "closed"], env=env)
+    assert "01J9G7XK4P" in r.output
+    r2 = runner.invoke(main, ["list", "--status", "open"], env=env)
+    assert "01J9G7XK4P" not in r2.output
+
+
+def test_list_tree_mode(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "x"}, {"t": "y"}])
+    r = runner.invoke(main, ["list", "--tree"], env=env)
+    assert r.exit_code == 0
+    assert "01J9G7XK4P" in r.output
+    assert "[claude]" in r.output
+    assert "events=2" in r.output
+
+
+def test_list_empty_store(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    r = runner.invoke(main, ["list"], env=env)
+    assert r.exit_code == 0
+    assert r.output.strip() == ""
+
+
+def test_list_multiple_sessions(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "x"}])
+    _seed(runner, env, "cursor", "02ABCDEF12", [{"t": "y"}])
+    _seed(runner, env, "codex", "03GHIJKL34", [{"t": "z"}])
+    r = runner.invoke(main, ["list"], env=env)
+    assert r.exit_code == 0
+    lines = r.output.strip().splitlines()
+    assert len(lines) == 3
+
+
+def test_list_help(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    r = runner.invoke(main, ["list", "--help"], env=env)
+    assert r.exit_code == 0
+    assert "--platform" in r.output
+    assert "--cwd" in r.output
+    assert "--status" in r.output
+    assert "--tree" in r.output
+
+
+# -- events command ------------------------------------------------------------
+
+
+def test_events_terse(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P",
+          [{"t": "user_message", "data": "hello"},
+           {"t": "assistant_message", "data": "hi"}])
+    r = runner.invoke(main, ["events", "01J9"], env=env)
+    assert r.exit_code == 0
+    lines = r.output.strip().splitlines()
+    assert lines[0] == "0 user_message hello"
+    assert lines[1] == "1 assistant_message hi"
+
+
+def test_events_json(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "user_message", "data": "hi"}])
+    r = runner.invoke(main, ["events", "01J9", "--json"], env=env)
+    assert r.exit_code == 0
+    obj = json.loads(r.output.strip())
+    assert obj["t"] == "user_message"
+
+
+def test_events_tree(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "user_message", "data": "hi"}])
+    r = runner.invoke(main, ["events", "01J9", "--tree"], env=env)
+    assert r.exit_code == 0
+    assert "#0 user_message" in r.output
+
+
+def test_events_type_filter(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P",
+          [{"t": "user_message", "data": "a"},
+           {"t": "assistant_message", "data": "b"},
+           {"t": "user_message", "data": "c"}])
+    r = runner.invoke(main, ["events", "01J9", "--type", "user_message"], env=env)
+    assert r.exit_code == 0
+    lines = r.output.strip().splitlines()
+    assert len(lines) == 2
+    assert "assistant_message" not in r.output
+
+
+def test_events_multiple_type_filters(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P",
+          [{"t": "user_message", "data": "a"},
+           {"t": "assistant_message", "data": "b"},
+           {"t": "tool_call", "data": "c"}])
+    r = runner.invoke(main, ["events", "01J9", "--type", "user_message", "--type", "tool_call"], env=env)
+    assert r.exit_code == 0
+    lines = r.output.strip().splitlines()
+    assert len(lines) == 2
+    assert "assistant_message" not in r.output
+
+
+def test_events_width_truncation(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    long_data = "x" * 200
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "msg", "data": long_data}])
+    r = runner.invoke(main, ["events", "01J9", "--width", "50"], env=env)
+    assert r.exit_code == 0
+    line = r.output.strip().splitlines()[0]
+    assert len(line) <= 50
+
+
+def test_events_width_zero_unlimited(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    long_data = "x" * 200
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "msg", "data": long_data}])
+    r = runner.invoke(main, ["events", "01J9", "--width", "0"], env=env)
+    assert r.exit_code == 0
+    line = r.output.strip().splitlines()[0]
+    assert long_data in line
+
+
+def test_events_prefix_resolution(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "msg", "data": "hi"}])
+    # Full ID should also work
+    r = runner.invoke(main, ["events", "01J9G7XK4P"], env=env)
+    assert r.exit_code == 0
+    assert "msg" in r.output
+
+
+def test_events_no_match_prefix(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "msg", "data": "hi"}])
+    r = runner.invoke(main, ["events", "ZZZZZZ"], env=env)
+    assert r.exit_code != 0
+
+
+def test_events_help(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    r = runner.invoke(main, ["events", "--help"], env=env)
+    assert r.exit_code == 0
+    assert "--type" in r.output
+    assert "--json" in r.output
+    assert "--tree" in r.output
+    assert "--width" in r.output
+
+
+# -- show command --------------------------------------------------------------
+
+
+def test_show_uses_events(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P",
+          [{"t": "user_message", "data": "a"}, {"t": "assistant_message", "data": "b"}])
+    r = runner.invoke(main, ["show", "01J9"], env=env)
+    assert "user_message" in r.output and "assistant_message" in r.output
+
+
+def test_show_json_mode(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "msg", "data": "hi"}])
+    r = runner.invoke(main, ["show", "01J9", "--json"], env=env)
+    assert r.exit_code == 0
+    obj = json.loads(r.output.strip())
+    assert obj["t"] == "msg"
+
+
+def test_show_tree_mode(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "msg", "data": "hi"}])
+    r = runner.invoke(main, ["show", "01J9", "--tree"], env=env)
+    assert r.exit_code == 0
+    assert "#0 msg" in r.output
+
+
+# -- tail command --------------------------------------------------------------
+
+
+def test_tail(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    events_payload = [{"t": "user_message", "data": str(i)} for i in range(5)]
+    _seed(runner, env, "claude", "01J9G7XK4P", events_payload)
+    r = runner.invoke(main, ["tail", "01J9", "-n", "2"], env=env)
+    assert r.exit_code == 0
+    lines = r.output.strip().splitlines()
+    assert len(lines) == 2
+    assert lines[0].startswith("3")
+    assert lines[1].startswith("4")
+
+
+def test_tail_default_n(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    events_payload = [{"t": "msg", "data": str(i)} for i in range(15)]
+    _seed(runner, env, "claude", "01J9G7XK4P", events_payload)
+    r = runner.invoke(main, ["tail", "01J9"], env=env)
+    assert r.exit_code == 0
+    lines = r.output.strip().splitlines()
+    assert len(lines) == 10  # default is 10
+
+
+def test_tail_n_larger_than_total(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    events_payload = [{"t": "msg", "data": str(i)} for i in range(3)]
+    _seed(runner, env, "claude", "01J9G7XK4P", events_payload)
+    r = runner.invoke(main, ["tail", "01J9", "-n", "100"], env=env)
+    assert r.exit_code == 0
+    lines = r.output.strip().splitlines()
+    assert len(lines) == 3  # only 3 events exist
+
+
+def test_tail_json_mode(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    events_payload = [{"t": "msg", "data": str(i)} for i in range(5)]
+    _seed(runner, env, "claude", "01J9G7XK4P", events_payload)
+    r = runner.invoke(main, ["tail", "01J9", "-n", "1", "--json"], env=env)
+    assert r.exit_code == 0
+    obj = json.loads(r.output.strip())
+    assert obj["data"] == "4"
+
+
+def test_tail_tree_mode(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    events_payload = [{"t": "msg", "data": str(i)} for i in range(5)]
+    _seed(runner, env, "claude", "01J9G7XK4P", events_payload)
+    r = runner.invoke(main, ["tail", "01J9", "-n", "1", "--tree"], env=env)
+    assert r.exit_code == 0
+    assert "#4 msg" in r.output
+
+
+# -- event command -------------------------------------------------------------
+
+
+def test_event_returns_full_data(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    big = "x" * 500
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "blob", "data": big}])
+    r = runner.invoke(main, ["event", "01J9", "0"], env=env)
+    assert r.exit_code == 0
+    assert big in r.output
+
+
+def test_event_json_format(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "msg", "data": "hello"}])
+    r = runner.invoke(main, ["event", "01J9", "0"], env=env)
+    assert r.exit_code == 0
+    obj = json.loads(r.output)
+    assert obj["t"] == "msg"
+    assert obj["data"] == "hello"
+    assert "seq" in obj
+    assert "ts" in obj
+
+
+def test_event_field_extraction(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P",
+          [{"t": "msg", "data": {"content": "hello", "role": "user"}}])
+    r = runner.invoke(main, ["event", "01J9", "0", "--field", "content"], env=env)
+    assert r.exit_code == 0
+    assert r.output.strip() == "hello"
+
+
+def test_event_field_extraction_nested(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    nested = {"inner": {"deep": True}}
+    _seed(runner, env, "claude", "01J9G7XK4P",
+          [{"t": "msg", "data": {"payload": nested, "label": "test"}}])
+    r = runner.invoke(main, ["event", "01J9", "0", "--field", "payload"], env=env)
+    assert r.exit_code == 0
+    obj = json.loads(r.output.strip())
+    assert obj == nested
+
+
+def test_event_field_not_found(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P",
+          [{"t": "msg", "data": {"content": "hello"}}])
+    r = runner.invoke(main, ["event", "01J9", "0", "--field", "nonexistent"], env=env)
+    assert r.exit_code != 0
+
+
+def test_event_field_on_string_data(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P",
+          [{"t": "msg", "data": "plain string"}])
+    r = runner.invoke(main, ["event", "01J9", "0", "--field", "anything"], env=env)
+    assert r.exit_code != 0
+
+
+def test_event_field_scalar_types(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P",
+          [{"t": "msg", "data": {"count": 42, "flag": True, "rate": 3.14}}])
+    # int
+    r = runner.invoke(main, ["event", "01J9", "0", "--field", "count"], env=env)
+    assert r.exit_code == 0
+    assert r.output.strip() == "42"
+    # bool
+    r = runner.invoke(main, ["event", "01J9", "0", "--field", "flag"], env=env)
+    assert r.exit_code == 0
+    assert r.output.strip() == "True"
+    # float
+    r = runner.invoke(main, ["event", "01J9", "0", "--field", "rate"], env=env)
+    assert r.exit_code == 0
+    assert r.output.strip() == "3.14"
+
+
+def test_event_second_seq(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P",
+          [{"t": "first", "data": "a"}, {"t": "second", "data": "b"}])
+    r = runner.invoke(main, ["event", "01J9", "1"], env=env)
+    assert r.exit_code == 0
+    obj = json.loads(r.output)
+    assert obj["t"] == "second"
+    assert obj["data"] == "b"
+
+
+# -- search command ------------------------------------------------------------
+
+
+def test_search(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "user_message", "data": "find me here"}])
+    r = runner.invoke(main, ["search", "find me"], env=env)
+    assert r.exit_code == 0
+    obj = json.loads(r.output.strip().splitlines()[0])
+    assert obj["session_id"] == "01J9G7XK4P"
+
+
+def test_search_no_match(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "msg", "data": "hello"}])
+    r = runner.invoke(main, ["search", "zzzznotfound"], env=env)
+    assert r.exit_code == 0
+    assert r.output.strip() == ""
+
+
+def test_search_case_insensitive(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "msg", "data": "Hello World"}])
+    r = runner.invoke(main, ["search", "hello world"], env=env)
+    assert r.exit_code == 0
+    assert "01J9G7XK4P" in r.output
+
+
+def test_search_platform_filter(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "msg", "data": "secret"}])
+    _seed(runner, env, "cursor", "02ABCDEF12", [{"t": "msg", "data": "secret"}])
+    r = runner.invoke(main, ["search", "secret", "--platform", "cursor"], env=env)
+    assert r.exit_code == 0
+    assert "02ABCDEF12" in r.output
+    assert "01J9G7XK4P" not in r.output
+
+
+def test_search_cwd_filter(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "msg", "data": "target"}])
+    payload = json.dumps({"t": "msg", "data": "target"}) + "\n"
+    runner.invoke(
+        main,
+        ["ingest", "--platform", "claude", "--session-id", "02ABCDEF12", "--cwd", "/other"],
+        input=payload,
+        env=env,
+    )
+    r = runner.invoke(main, ["search", "target", "--cwd", "/proj"], env=env)
+    assert "01J9G7XK4P" in r.output
+    assert "02ABCDEF12" not in r.output
+
+
+def test_search_across_sessions(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "msg", "data": "needle"}])
+    _seed(runner, env, "cursor", "02ABCDEF12", [{"t": "msg", "data": "needle"}])
+    r = runner.invoke(main, ["search", "needle"], env=env)
+    assert r.exit_code == 0
+    lines = r.output.strip().splitlines()
+    assert len(lines) == 2
+
+
+def test_search_hit_fields(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "user_message", "data": "find this"}])
+    r = runner.invoke(main, ["search", "find this"], env=env)
+    obj = json.loads(r.output.strip().splitlines()[0])
+    assert "session_id" in obj
+    assert "platform" in obj
+    assert "seq" in obj
+    assert "t" in obj
+    assert "snippet" in obj
+
+
+# -- stats command -------------------------------------------------------------
+
+
+def test_stats_global(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "x", "data": 1}])
+    _seed(runner, env, "cursor", "02ABCDEF12", [{"t": "y", "data": 2}, {"t": "z", "data": 3}])
+    r = runner.invoke(main, ["stats"], env=env)
+    obj = json.loads(r.output.strip())
+    assert obj["session_count"] == 2
+    assert obj["event_count"] == 3
+
+
+def test_stats_session(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "x"}, {"t": "y"}, {"t": "z"}])
+    r = runner.invoke(main, ["stats", "01J9"], env=env)
+    assert r.exit_code == 0
+    obj = json.loads(r.output.strip())
+    assert obj["session_id"] == "01J9G7XK4P"
+    assert obj["platform"] == "claude"
+    assert obj["event_count"] == 3
+
+
+def test_stats_empty_store(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    r = runner.invoke(main, ["stats"], env=env)
+    assert r.exit_code == 0
+    obj = json.loads(r.output.strip())
+    assert obj["session_count"] == 0
+    assert obj["event_count"] == 0
+
+
+def test_stats_includes_bytes(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "x", "data": "content"}])
+    r = runner.invoke(main, ["stats", "01J9"], env=env)
+    obj = json.loads(r.output.strip())
+    assert "bytes_compressed" in obj
+    assert obj["bytes_compressed"] > 0
+
+
+def test_stats_nonexistent_session(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "x"}])
+    r = runner.invoke(main, ["stats", "ZZZZZZ"], env=env)
+    assert r.exit_code != 0
+
+
+# -- command registration checks -----------------------------------------------
+
+
+def test_all_read_commands_registered(tmp_path: Path):
+    runner, env = _runner_with_home(tmp_path)
+    r = runner.invoke(main, ["--help"], env=env)
+    assert r.exit_code == 0
+    for cmd in ["list", "show", "events", "tail", "event", "search", "stats"]:
+        assert cmd in r.output, f"command {cmd!r} not in --help output"
