@@ -321,3 +321,153 @@ def test_ingest_different_platforms(tmp_path: Path):
     # All three session dirs exist
     for platform in ["claude", "cursor", "codex"]:
         assert (tmp_path / "traces" / platform / f"SID_{platform}").is_dir()
+
+
+# -- invalid JSON input -------------------------------------------------------
+
+
+def test_ingest_invalid_json_fails(tmp_path: Path):
+    """Invalid JSON on stdin should cause a non-zero exit."""
+    runner, env = _runner_with_home(tmp_path)
+    r = runner.invoke(
+        main,
+        ["ingest", "--platform", "claude", "--session-id", "BADJSON"],
+        input="not valid json\n",
+        env=env,
+    )
+    assert r.exit_code != 0
+
+
+def test_ingest_partial_valid_json_stops_at_bad_line(tmp_path: Path):
+    """If good lines precede a bad line, the command should fail on the bad line."""
+    runner, env = _runner_with_home(tmp_path)
+    payload = (
+        json.dumps({"t": "ok", "data": "fine"}) + "\n"
+        + "BAD LINE\n"
+    )
+    r = runner.invoke(
+        main,
+        ["ingest", "--platform", "claude", "--session-id", "PARTIAL1"],
+        input=payload,
+        env=env,
+    )
+    assert r.exit_code != 0
+
+
+# -- event data roundtrip with defaults ----------------------------------------
+
+
+def test_ingest_default_t_value_readable(tmp_path: Path):
+    """When t is omitted, the stored event should have t='event'."""
+    runner, env = _runner_with_home(tmp_path)
+    payload = json.dumps({"data": "no_type"}) + "\n"
+    r = runner.invoke(
+        main,
+        ["ingest", "--platform", "claude", "--session-id", "TROUND"],
+        input=payload,
+        env=env,
+    )
+    assert r.exit_code == 0
+
+    from atrace.config import Config
+    from atrace.store import Store
+
+    store = Store(Config(root=tmp_path))
+    reader = store.reader("TROUND")
+    events = list(reader.iter_events())
+    assert len(events) == 1
+    assert events[0]["t"] == "event"
+    assert events[0]["data"] == "no_type"
+
+
+def test_ingest_data_none_roundtrip(tmp_path: Path):
+    """When data is omitted, stored event should not have a data key (or have None)."""
+    runner, env = _runner_with_home(tmp_path)
+    payload = json.dumps({"t": "ping"}) + "\n"
+    r = runner.invoke(
+        main,
+        ["ingest", "--platform", "claude", "--session-id", "DROUND"],
+        input=payload,
+        env=env,
+    )
+    assert r.exit_code == 0
+
+    from atrace.config import Config
+    from atrace.store import Store
+
+    store = Store(Config(root=tmp_path))
+    reader = store.reader("DROUND")
+    events = list(reader.iter_events())
+    assert len(events) == 1
+    assert events[0]["t"] == "ping"
+    # data=None means the key is either absent or None
+    assert events[0].get("data") is None
+
+
+# -- only-blank-lines input ---------------------------------------------------
+
+
+def test_ingest_only_blank_lines(tmp_path: Path):
+    """Stdin with only blank/whitespace lines should write 0 events."""
+    runner, env = _runner_with_home(tmp_path)
+    r = runner.invoke(
+        main,
+        ["ingest", "--platform", "claude", "--session-id", "BLANKS"],
+        input="\n\n  \n\t\n",
+        env=env,
+    )
+    assert r.exit_code == 0
+    assert "0 events" in (r.output + getattr(r, "stderr", ""))
+
+
+# -- complex data types -------------------------------------------------------
+
+
+def test_ingest_complex_data(tmp_path: Path):
+    """Events with nested dicts, lists, and various types should roundtrip."""
+    runner, env = _runner_with_home(tmp_path)
+    complex_data = {
+        "nested": {"a": [1, 2, 3]},
+        "flag": True,
+        "count": 42,
+        "label": None,
+    }
+    payload = json.dumps({"t": "complex", "data": complex_data}) + "\n"
+    r = runner.invoke(
+        main,
+        ["ingest", "--platform", "claude", "--session-id", "CPLX1"],
+        input=payload,
+        env=env,
+    )
+    assert r.exit_code == 0
+
+    from atrace.config import Config
+    from atrace.store import Store
+
+    store = Store(Config(root=tmp_path))
+    reader = store.reader("CPLX1")
+    events = list(reader.iter_events())
+    assert len(events) == 1
+    assert events[0]["data"] == complex_data
+
+
+# -- meta.yaml platform field --------------------------------------------------
+
+
+def test_ingest_meta_records_platform(tmp_path: Path):
+    """meta.yaml should record the platform passed via --platform."""
+    runner, env = _runner_with_home(tmp_path)
+    payload = json.dumps({"t": "msg"}) + "\n"
+    r = runner.invoke(
+        main,
+        ["ingest", "--platform", "gemini", "--session-id", "PLAT1"],
+        input=payload,
+        env=env,
+    )
+    assert r.exit_code == 0
+    import yaml
+    meta = yaml.safe_load(
+        (tmp_path / "traces" / "gemini" / "PLAT1" / "meta.yaml").read_text()
+    )
+    assert meta["platform"] == "gemini"
+    assert meta["session_id"] == "PLAT1"
