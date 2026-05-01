@@ -7,8 +7,10 @@ requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [ { name = "Duncan McKinnon" } ]
 dependencies = [
-  "click",
-  "pyaml",
+  "click>=8.1",
+  "msgpack>=1.0",
+  "zstandard>=0.22",
+  "pyaml>=23.0",
 ]
 
 [project.scripts]
@@ -26,5 +28,5 @@ where = ["src"]
 
 [dependency-groups]
 dev = [
-  "pytest",
+  "pytest>=8.0",
 ]
