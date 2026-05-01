@@ -7,7 +7,7 @@ from typing import Iterator
 from atrace.store import Store
 
 
-@dataclass
+@dataclass(frozen=True)
 class Hit:
     session_id: str
     platform: str
