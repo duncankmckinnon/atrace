@@ -1,4 +1,3 @@
-"""Tests for atrace.writer: SessionWriter append-only event writer."""
 from __future__ import annotations
 
 import re
@@ -7,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from atrace.codec import decode_event
-from atrace.index import IndexReader, IndexWriter
+from atrace.index import IndexReader
 from atrace.meta import read_meta, write_meta, SessionMeta
 from atrace.paths import events_path, index_path, meta_path
 from atrace.writer import SessionWriter, _utc_iso_ms
@@ -24,18 +23,6 @@ def _open_writer(tmp_path: Path, sid: str = "01J9G7XK4P", **kw) -> SessionWriter
     defaults.update(kw)
     return SessionWriter.open(sd, **defaults)
 
-
-def _read_event_at(alog: Path, offset: int) -> dict:
-    """Read a single zstd frame starting at offset."""
-    import zstandard as zstd
-
-    data = alog.read_bytes()[offset:]
-    dobj = zstd.ZstdDecompressor().decompressobj()
-    raw = dobj.decompress(data)
-    remaining = len(dobj.unused_data)
-    if remaining:
-        raw = raw[: len(raw)]  # already correct, just for clarity
-    return decode_event(alog.read_bytes()[offset : len(data) - remaining + offset])
 
 
 # -- open / directory creation -------------------------------------------------
