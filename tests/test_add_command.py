@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import patch
 
 from click.testing import CliRunner
 
@@ -240,3 +239,89 @@ def test_platform_flag_value_maps_to_platforms_key():
     for key, cls in PLATFORMS.items():
         instance = cls(settings_file=Path("/fake"))
         assert instance.name == key
+
+
+# -- implementation uses PLATFORMS dict ----------------------------------------
+
+
+def test_add_uses_platforms_dict(tmp_path: Path, monkeypatch):
+    """The add command should dispatch via PLATFORMS[platform_flag](), not hardcode ClaudePlatform()."""
+    from unittest.mock import MagicMock
+
+    from atrace.commands.add import PLATFORMS
+
+    mock_platform = MagicMock()
+    mock_platform.display_name = "Mock Platform"
+    mock_cls = MagicMock(return_value=mock_platform)
+
+    monkeypatch.setitem(PLATFORMS, "claude", mock_cls)
+    r = CliRunner().invoke(main, ["add", "--claude"])
+    assert r.exit_code == 0, r.output
+    mock_cls.assert_called_once()
+    mock_platform.install.assert_called_once()
+
+
+def test_add_remove_uses_platforms_dict(tmp_path: Path, monkeypatch):
+    """The add --remove command should dispatch via PLATFORMS[platform_flag](), not hardcode ClaudePlatform()."""
+    from unittest.mock import MagicMock
+
+    from atrace.commands.add import PLATFORMS
+
+    mock_platform = MagicMock()
+    mock_platform.display_name = "Mock Platform"
+    mock_cls = MagicMock(return_value=mock_platform)
+
+    monkeypatch.setitem(PLATFORMS, "claude", mock_cls)
+    r = CliRunner().invoke(main, ["add", "--claude", "--remove"])
+    assert r.exit_code == 0, r.output
+    mock_cls.assert_called_once()
+    mock_platform.uninstall.assert_called_once()
+
+
+# -- flag ordering -------------------------------------------------------------
+
+
+def test_add_remove_before_claude_flag(tmp_path: Path, monkeypatch):
+    settings = tmp_path / "settings.json"
+    monkeypatch.setattr(
+        "atrace.commands.add.ClaudePlatform",
+        lambda: ClaudePlatform(settings_file=settings),
+    )
+    runner = CliRunner()
+    runner.invoke(main, ["add", "--claude"])
+    r = runner.invoke(main, ["add", "--remove", "--claude"])
+    assert r.exit_code == 0, r.output
+    assert "Removed" in r.output
+
+
+# -- hook command structure ----------------------------------------------------
+
+
+def test_add_claude_hook_entries_have_command_type(tmp_path: Path, monkeypatch):
+    settings = tmp_path / "settings.json"
+    monkeypatch.setattr(
+        "atrace.commands.add.ClaudePlatform",
+        lambda: ClaudePlatform(settings_file=settings),
+    )
+    CliRunner().invoke(main, ["add", "--claude"])
+    data = json.loads(settings.read_text())
+    for event_name, entries in data["hooks"].items():
+        for entry in entries:
+            for hook in entry["hooks"]:
+                assert hook["type"] == "command", f"{event_name} hook missing type=command"
+                assert "command" in hook, f"{event_name} hook missing command key"
+
+
+def test_add_claude_hook_commands_contain_atrace(tmp_path: Path, monkeypatch):
+    settings = tmp_path / "settings.json"
+    monkeypatch.setattr(
+        "atrace.commands.add.ClaudePlatform",
+        lambda: ClaudePlatform(settings_file=settings),
+    )
+    CliRunner().invoke(main, ["add", "--claude"])
+    data = json.loads(settings.read_text())
+    for event_name, entries in data["hooks"].items():
+        for entry in entries:
+            for hook in entry["hooks"]:
+                cmd = hook["command"]
+                assert "atrace" in cmd, f"{event_name} command {cmd!r} missing 'atrace'"
