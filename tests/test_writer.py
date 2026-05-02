@@ -513,19 +513,19 @@ class TestFlushAndDetach:
         m_after = read_meta(meta_path(sd))
         assert m_after.started_at == m_before.started_at
 
-    def test_meta_not_rewritten_by_detach(self, tmp_path: Path):
-        """flush_and_detach does not write meta; meta stays as open() left it."""
+    def test_meta_updated_by_detach(self, tmp_path: Path):
+        """flush_and_detach writes meta with current event_count."""
         sd = tmp_path / "01J9G7"
         w = SessionWriter.open(sd, session_id="01J9G7", platform="claude", cwd="/p")
         w.append("x", 1)
         w.append("y", 2)
-        # Meta was written by open() with event_count=0
         m_mid = read_meta(meta_path(sd))
         assert m_mid.event_count == 0
         w.flush_and_detach()
-        # After detach, meta should still show event_count=0 (not updated)
         m_after = read_meta(meta_path(sd))
-        assert m_after.event_count == 0
+        assert m_after.event_count == 2
+        assert m_after.last_seq == 1
+        assert m_after.status == "open"
 
     def test_close_after_detach_raises_or_noop(self, tmp_path: Path):
         """Calling close() after flush_and_detach() should not corrupt state."""

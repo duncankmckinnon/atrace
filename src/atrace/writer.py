@@ -96,6 +96,7 @@ class SessionWriter:
 
     def flush_and_detach(self) -> None:
         self._index_w.close()
+        write_meta(self._meta_path, self._meta)
 
     def close(self, *, status: str = "closed") -> None:
         self._index_w.close()
