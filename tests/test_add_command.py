@@ -6,6 +6,7 @@ from pathlib import Path
 from click.testing import CliRunner
 
 from atrace.cli import main
+from atrace.commands.add import PLATFORMS
 from atrace.platforms.claude.install import ClaudePlatform
 
 
@@ -50,10 +51,7 @@ def test_add_remove_without_platform_fails():
 
 def test_add_claude_writes_settings(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
-    monkeypatch.setattr(
-        "atrace.commands.add.ClaudePlatform",
-        lambda: ClaudePlatform(settings_file=settings),
-    )
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     r = CliRunner().invoke(main, ["add", "--claude"])
     assert r.exit_code == 0, r.output
     assert "Installed" in r.output
@@ -64,10 +62,7 @@ def test_add_claude_writes_settings(tmp_path: Path, monkeypatch):
 
 def test_add_claude_creates_settings_file(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
-    monkeypatch.setattr(
-        "atrace.commands.add.ClaudePlatform",
-        lambda: ClaudePlatform(settings_file=settings),
-    )
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     assert not settings.exists()
     CliRunner().invoke(main, ["add", "--claude"])
     assert settings.exists()
@@ -77,10 +72,7 @@ def test_add_claude_registers_all_hook_events(tmp_path: Path, monkeypatch):
     from atrace.platforms.claude.constants import HOOK_EVENTS
 
     settings = tmp_path / "settings.json"
-    monkeypatch.setattr(
-        "atrace.commands.add.ClaudePlatform",
-        lambda: ClaudePlatform(settings_file=settings),
-    )
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     CliRunner().invoke(main, ["add", "--claude"])
     data = json.loads(settings.read_text())
     assert set(data["hooks"].keys()) == set(HOOK_EVENTS.keys())
@@ -88,10 +80,7 @@ def test_add_claude_registers_all_hook_events(tmp_path: Path, monkeypatch):
 
 def test_add_claude_idempotent(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
-    monkeypatch.setattr(
-        "atrace.commands.add.ClaudePlatform",
-        lambda: ClaudePlatform(settings_file=settings),
-    )
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     runner = CliRunner()
     runner.invoke(main, ["add", "--claude"])
     first = settings.read_text()
@@ -103,10 +92,7 @@ def test_add_claude_idempotent(tmp_path: Path, monkeypatch):
 def test_add_claude_preserves_existing_settings(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
     settings.write_text(json.dumps({"theme": "dark"}))
-    monkeypatch.setattr(
-        "atrace.commands.add.ClaudePlatform",
-        lambda: ClaudePlatform(settings_file=settings),
-    )
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     CliRunner().invoke(main, ["add", "--claude"])
     data = json.loads(settings.read_text())
     assert data["theme"] == "dark"
@@ -118,10 +104,7 @@ def test_add_claude_preserves_existing_settings(tmp_path: Path, monkeypatch):
 
 def test_add_claude_remove(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
-    monkeypatch.setattr(
-        "atrace.commands.add.ClaudePlatform",
-        lambda: ClaudePlatform(settings_file=settings),
-    )
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     runner = CliRunner()
     runner.invoke(main, ["add", "--claude"])
     r = runner.invoke(main, ["add", "--claude", "--remove"])
@@ -134,10 +117,7 @@ def test_add_claude_remove(tmp_path: Path, monkeypatch):
 
 def test_add_claude_remove_noop_when_not_installed(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
-    monkeypatch.setattr(
-        "atrace.commands.add.ClaudePlatform",
-        lambda: ClaudePlatform(settings_file=settings),
-    )
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     r = CliRunner().invoke(main, ["add", "--claude", "--remove"])
     assert r.exit_code == 0, r.output
     assert "Removed" in r.output
@@ -146,10 +126,7 @@ def test_add_claude_remove_noop_when_not_installed(tmp_path: Path, monkeypatch):
 def test_add_claude_remove_preserves_other_settings(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
     settings.write_text(json.dumps({"theme": "dark"}))
-    monkeypatch.setattr(
-        "atrace.commands.add.ClaudePlatform",
-        lambda: ClaudePlatform(settings_file=settings),
-    )
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     runner = CliRunner()
     runner.invoke(main, ["add", "--claude"])
     runner.invoke(main, ["add", "--claude", "--remove"])
@@ -160,10 +137,7 @@ def test_add_claude_remove_preserves_other_settings(tmp_path: Path, monkeypatch)
 
 def test_add_claude_reinstall_after_remove(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
-    monkeypatch.setattr(
-        "atrace.commands.add.ClaudePlatform",
-        lambda: ClaudePlatform(settings_file=settings),
-    )
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     runner = CliRunner()
     runner.invoke(main, ["add", "--claude"])
     first = json.loads(settings.read_text())
@@ -178,10 +152,7 @@ def test_add_claude_reinstall_after_remove(tmp_path: Path, monkeypatch):
 
 def test_add_install_output_contains_platform_name(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
-    monkeypatch.setattr(
-        "atrace.commands.add.ClaudePlatform",
-        lambda: ClaudePlatform(settings_file=settings),
-    )
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     r = CliRunner().invoke(main, ["add", "--claude"])
     assert r.exit_code == 0
     assert "Claude Code" in r.output
@@ -189,10 +160,7 @@ def test_add_install_output_contains_platform_name(tmp_path: Path, monkeypatch):
 
 def test_add_remove_output_contains_platform_name(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
-    monkeypatch.setattr(
-        "atrace.commands.add.ClaudePlatform",
-        lambda: ClaudePlatform(settings_file=settings),
-    )
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     runner = CliRunner()
     runner.invoke(main, ["add", "--claude"])
     r = runner.invoke(main, ["add", "--claude", "--remove"])
@@ -283,10 +251,7 @@ def test_add_remove_uses_platforms_dict(tmp_path: Path, monkeypatch):
 
 def test_add_remove_before_claude_flag(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
-    monkeypatch.setattr(
-        "atrace.commands.add.ClaudePlatform",
-        lambda: ClaudePlatform(settings_file=settings),
-    )
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     runner = CliRunner()
     runner.invoke(main, ["add", "--claude"])
     r = runner.invoke(main, ["add", "--remove", "--claude"])
@@ -299,10 +264,7 @@ def test_add_remove_before_claude_flag(tmp_path: Path, monkeypatch):
 
 def test_add_claude_hook_entries_have_command_type(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
-    monkeypatch.setattr(
-        "atrace.commands.add.ClaudePlatform",
-        lambda: ClaudePlatform(settings_file=settings),
-    )
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     CliRunner().invoke(main, ["add", "--claude"])
     data = json.loads(settings.read_text())
     for event_name, entries in data["hooks"].items():
@@ -314,10 +276,7 @@ def test_add_claude_hook_entries_have_command_type(tmp_path: Path, monkeypatch):
 
 def test_add_claude_hook_commands_contain_atrace(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
-    monkeypatch.setattr(
-        "atrace.commands.add.ClaudePlatform",
-        lambda: ClaudePlatform(settings_file=settings),
-    )
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     CliRunner().invoke(main, ["add", "--claude"])
     data = json.loads(settings.read_text())
     for event_name, entries in data["hooks"].items():

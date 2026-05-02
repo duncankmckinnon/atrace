@@ -16,7 +16,7 @@ PLATFORMS: dict[str, type[Platform]] = {
 def add(platform_flag: str | None, remove: bool) -> None:
     if not platform_flag:
         raise click.UsageError("Pick a platform: --claude")
-    platform = ClaudePlatform()
+    platform = PLATFORMS[platform_flag]()
     if remove:
         platform.uninstall()
         click.echo(f"Removed tracing for {platform.display_name}")
