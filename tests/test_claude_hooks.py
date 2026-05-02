@@ -1,0 +1,473 @@
+from __future__ import annotations
+
+import io
+import json
+from pathlib import Path
+
+import pytest
+
+from atrace.config import Config
+from atrace.platforms.claude import hooks
+from atrace.store import Store
+
+
+@pytest.fixture
+def env(monkeypatch, tmp_path: Path):
+    monkeypatch.setenv("ATRACE_HOME", str(tmp_path))
+    return tmp_path
+
+
+def _stdin(monkeypatch, payload: dict) -> None:
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
+
+
+# -- _read_stdin ---------------------------------------------------------------
+
+
+class TestReadStdin:
+    def test_valid_json(self, monkeypatch):
+        _stdin(monkeypatch, {"session_id": "abc", "cwd": "/p"})
+        result = hooks._read_stdin()
+        assert result == {"session_id": "abc", "cwd": "/p"}
+
+    def test_empty_stdin_returns_empty_dict(self, monkeypatch):
+        monkeypatch.setattr("sys.stdin", io.StringIO(""))
+        assert hooks._read_stdin() == {}
+
+    def test_invalid_json_returns_empty_dict(self, monkeypatch):
+        monkeypatch.setattr("sys.stdin", io.StringIO("not json"))
+        assert hooks._read_stdin() == {}
+
+    def test_io_error_returns_empty_dict(self, monkeypatch):
+        class BrokenStdin:
+            def read(self):
+                raise OSError("broken pipe")
+        monkeypatch.setattr("sys.stdin", BrokenStdin())
+        assert hooks._read_stdin() == {}
+
+    def test_nested_payload(self, monkeypatch):
+        payload = {"session_id": "s", "nested": {"a": [1, 2, 3]}}
+        _stdin(monkeypatch, payload)
+        assert hooks._read_stdin() == payload
+
+
+# -- _strip_routing ------------------------------------------------------------
+
+
+class TestStripRouting:
+    def test_removes_session_id(self):
+        result = hooks._strip_routing({"session_id": "abc", "cwd": "/p", "prompt": "hi"})
+        assert "session_id" not in result
+        assert result == {"cwd": "/p", "prompt": "hi"}
+
+    def test_preserves_other_keys(self):
+        payload = {"session_id": "abc", "tool_name": "Read", "tool_input": {"x": 1}}
+        result = hooks._strip_routing(payload)
+        assert result == {"tool_name": "Read", "tool_input": {"x": 1}}
+
+    def test_empty_dict(self):
+        assert hooks._strip_routing({}) == {}
+
+    def test_only_session_id(self):
+        assert hooks._strip_routing({"session_id": "abc"}) == {}
+
+
+# -- _emit ---------------------------------------------------------------------
+
+
+class TestEmit:
+    def test_returns_true_on_success(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "abc", "cwd": "/p"})
+        payload = hooks._read_stdin()
+        assert hooks._emit("test_event", payload) is True
+
+    def test_returns_false_without_session_id(self, monkeypatch, env: Path):
+        assert hooks._emit("test_event", {"cwd": "/p"}) is False
+
+    def test_returns_false_with_empty_session_id(self, monkeypatch, env: Path):
+        assert hooks._emit("test_event", {"session_id": "", "cwd": "/p"}) is False
+
+    def test_returns_false_with_none_session_id(self, monkeypatch, env: Path):
+        assert hooks._emit("test_event", {"session_id": None, "cwd": "/p"}) is False
+
+    def test_stores_event_with_correct_type(self, monkeypatch, env: Path):
+        hooks._emit("my_type", {"session_id": "s1", "cwd": "/p", "key": "val"})
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert len(events) == 1
+        assert events[0]["t"] == "my_type"
+
+    def test_strips_session_id_from_data(self, monkeypatch, env: Path):
+        hooks._emit("x", {"session_id": "s1", "cwd": "/p", "extra": 42})
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert "session_id" not in events[0].get("data", {})
+        assert events[0]["data"]["extra"] == 42
+
+    def test_uses_cwd_from_payload(self, monkeypatch, env: Path):
+        hooks._emit("x", {"session_id": "s1", "cwd": "/my/project"})
+        m = next(Store(Config.load()).list_sessions())
+        assert m.cwd == "/my/project"
+
+    def test_falls_back_to_os_cwd_when_no_cwd(self, monkeypatch, env: Path):
+        monkeypatch.chdir(env)
+        hooks._emit("x", {"session_id": "s1"})
+        m = next(Store(Config.load()).list_sessions())
+        assert m.cwd == str(env)
+
+
+# -- session_start -------------------------------------------------------------
+
+
+class TestSessionStart:
+    def test_creates_session(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "abc-123", "cwd": "/proj/x", "source": "cli"})
+        hooks.session_start()
+        store = Store(Config.load())
+        metas = list(store.list_sessions())
+        assert len(metas) == 1
+        m = metas[0]
+        assert m.session_id == "abc-123"
+        assert m.platform == "claude"
+        assert m.cwd == "/proj/x"
+        assert m.event_count == 1
+        assert m.status == "open"
+
+    def test_event_type_is_session_start(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.session_start()
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert events[0]["t"] == "session_start"
+
+    def test_stores_payload_fields_in_data(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p", "source": "cli"})
+        hooks.session_start()
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert events[0]["data"]["source"] == "cli"
+
+
+# -- user_prompt_submit --------------------------------------------------------
+
+
+class TestUserPromptSubmit:
+    def test_appends_user_message(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "abc-123", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(monkeypatch, {"session_id": "abc-123", "cwd": "/p", "prompt": "hello"})
+        hooks.user_prompt_submit()
+        store = Store(Config.load())
+        events = list(store.reader("abc-123").iter_events())
+        assert events[0]["t"] == "session_start"
+        assert events[1]["t"] == "user_message"
+        assert events[1]["data"]["prompt"] == "hello"
+        assert "session_id" not in events[1].get("data", {})
+
+
+# -- pre_tool_use --------------------------------------------------------------
+
+
+class TestPreToolUse:
+    def test_appends_tool_call(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "abc", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(monkeypatch, {
+            "session_id": "abc", "cwd": "/p",
+            "tool_name": "Read", "tool_use_id": "tu_1",
+            "tool_input": {"file_path": "x.py"},
+        })
+        hooks.pre_tool_use()
+        events = list(Store(Config.load()).reader("abc").iter_events())
+        assert events[1]["t"] == "tool_call"
+        assert events[1]["data"]["tool_name"] == "Read"
+        assert events[1]["data"]["tool_use_id"] == "tu_1"
+        assert events[1]["data"]["tool_input"] == {"file_path": "x.py"}
+
+
+# -- post_tool_use -------------------------------------------------------------
+
+
+class TestPostToolUse:
+    def test_appends_tool_result(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "abc", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(monkeypatch, {
+            "session_id": "abc", "cwd": "/p",
+            "tool_name": "Read", "tool_use_id": "tu_1",
+            "tool_response": "<file contents>",
+        })
+        hooks.post_tool_use()
+        events = list(Store(Config.load()).reader("abc").iter_events())
+        assert events[1]["t"] == "tool_result"
+        assert events[1]["data"]["tool_response"] == "<file contents>"
+
+
+# -- stop ----------------------------------------------------------------------
+
+
+class TestStop:
+    def test_appends_assistant_message(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p", "response": "done"})
+        hooks.stop()
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert events[1]["t"] == "assistant_message"
+        assert events[1]["data"]["response"] == "done"
+
+
+# -- subagent_stop -------------------------------------------------------------
+
+
+class TestSubagentStop:
+    def test_appends_subagent_message(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p", "agent": "explore"})
+        hooks.subagent_stop()
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert events[1]["t"] == "subagent_message"
+        assert events[1]["data"]["agent"] == "explore"
+
+
+# -- stop_failure --------------------------------------------------------------
+
+
+class TestStopFailure:
+    def test_appends_error(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p", "error": "timeout"})
+        hooks.stop_failure()
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert events[1]["t"] == "error"
+        assert events[1]["data"]["error"] == "timeout"
+
+
+# -- notification --------------------------------------------------------------
+
+
+class TestNotification:
+    def test_appends_notification(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p", "message": "task done"})
+        hooks.notification()
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert events[1]["t"] == "notification"
+        assert events[1]["data"]["message"] == "task done"
+
+
+# -- permission_request --------------------------------------------------------
+
+
+class TestPermissionRequest:
+    def test_appends_permission_request(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(monkeypatch, {
+            "session_id": "s1", "cwd": "/p",
+            "tool_name": "Bash", "command": "rm -rf /",
+        })
+        hooks.permission_request()
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert events[1]["t"] == "permission_request"
+        assert events[1]["data"]["tool_name"] == "Bash"
+
+
+# -- session_end ---------------------------------------------------------------
+
+
+class TestSessionEnd:
+    def test_closes_session(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "abc", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(monkeypatch, {"session_id": "abc", "cwd": "/p"})
+        hooks.session_end()
+        store = Store(Config.load())
+        m = next(store.list_sessions())
+        assert m.status == "closed"
+        assert m.ended_at is not None
+        events = list(store.reader("abc").iter_events())
+        assert events[-1]["t"] == "session_end"
+
+    def test_appends_event_before_closing(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "abc", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(monkeypatch, {"session_id": "abc", "cwd": "/p"})
+        hooks.session_end()
+        store = Store(Config.load())
+        m = next(store.list_sessions())
+        assert m.event_count == 2
+
+    def test_session_end_no_session_id_is_noop(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"cwd": "/p"})
+        hooks.session_end()
+        assert list(Store(Config.load()).list_sessions()) == []
+
+
+# -- silent noop edge cases ----------------------------------------------------
+
+
+class TestSilentNoop:
+    def test_missing_session_id_is_silent_noop(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"cwd": "/p"})
+        hooks.user_prompt_submit()
+        assert list(Store(Config.load()).list_sessions()) == []
+
+    def test_invalid_json_is_silent_noop(self, monkeypatch, env: Path):
+        monkeypatch.setattr("sys.stdin", io.StringIO("not json"))
+        hooks.session_start()
+        assert list(Store(Config.load()).list_sessions()) == []
+
+    def test_empty_stdin_is_silent_noop(self, monkeypatch, env: Path):
+        monkeypatch.setattr("sys.stdin", io.StringIO(""))
+        hooks.session_start()
+        assert list(Store(Config.load()).list_sessions()) == []
+
+    def test_broken_stdin_is_silent_noop(self, monkeypatch, env: Path):
+        class BrokenStdin:
+            def read(self):
+                raise OSError("broken pipe")
+        monkeypatch.setattr("sys.stdin", BrokenStdin())
+        hooks.pre_tool_use()
+        assert list(Store(Config.load()).list_sessions()) == []
+
+    def test_empty_session_id_is_noop(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "", "cwd": "/p"})
+        hooks.stop()
+        assert list(Store(Config.load()).list_sessions()) == []
+
+    def test_null_session_id_is_noop(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": None, "cwd": "/p"})
+        hooks.notification()
+        assert list(Store(Config.load()).list_sessions()) == []
+
+
+# -- no stdout output ----------------------------------------------------------
+
+
+class TestNoStdout:
+    def test_hooks_do_not_print_to_stdout(self, monkeypatch, env: Path, capsys):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.session_start()
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
+    def test_noop_hooks_do_not_print_to_stdout(self, monkeypatch, env: Path, capsys):
+        _stdin(monkeypatch, {"cwd": "/p"})
+        hooks.user_prompt_submit()
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
+    def test_session_end_does_not_print_to_stdout(self, monkeypatch, env: Path, capsys):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.session_end()
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
+
+# -- all event types route correctly -------------------------------------------
+
+
+class TestAllEventTypesRoute:
+    def test_all_event_types_route_correctly(self, monkeypatch, env: Path):
+        expected = [
+            (hooks.session_start, "session_start"),
+            (hooks.user_prompt_submit, "user_message"),
+            (hooks.pre_tool_use, "tool_call"),
+            (hooks.post_tool_use, "tool_result"),
+            (hooks.stop, "assistant_message"),
+            (hooks.subagent_stop, "subagent_message"),
+            (hooks.stop_failure, "error"),
+            (hooks.notification, "notification"),
+            (hooks.permission_request, "permission_request"),
+            (hooks.session_end, "session_end"),
+        ]
+        for fn, t in expected:
+            _stdin(monkeypatch, {"session_id": "s", "cwd": "/p"})
+            fn()
+        events = list(Store(Config.load()).reader("s").iter_events())
+        assert [e["t"] for e in events] == [t for _, t in expected]
+
+
+# -- platform constant ---------------------------------------------------------
+
+
+class TestPlatformConstant:
+    def test_platform_is_claude(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.session_start()
+        m = next(Store(Config.load()).list_sessions())
+        assert m.platform == "claude"
+
+    def test_platform_constant_value(self):
+        assert hooks._PLATFORM == "claude"
+
+
+# -- multiple sessions ---------------------------------------------------------
+
+
+class TestMultipleSessions:
+    def test_different_sessions_are_independent(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/a"})
+        hooks.session_start()
+        _stdin(monkeypatch, {"session_id": "s2", "cwd": "/b"})
+        hooks.session_start()
+        store = Store(Config.load())
+        metas = sorted(store.list_sessions(), key=lambda m: m.session_id)
+        assert len(metas) == 2
+        assert metas[0].session_id == "s1"
+        assert metas[0].cwd == "/a"
+        assert metas[1].session_id == "s2"
+        assert metas[1].cwd == "/b"
+
+    def test_closing_one_session_does_not_affect_other(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/a"})
+        hooks.session_start()
+        _stdin(monkeypatch, {"session_id": "s2", "cwd": "/b"})
+        hooks.session_start()
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/a"})
+        hooks.session_end()
+        store = Store(Config.load())
+        metas = {m.session_id: m for m in store.list_sessions()}
+        assert metas["s1"].status == "closed"
+        assert metas["s2"].status == "open"
+
+
+# -- complex payload preservation ----------------------------------------------
+
+
+class TestPayloadPreservation:
+    def test_nested_dict_preserved(self, monkeypatch, env: Path):
+        payload = {
+            "session_id": "s1", "cwd": "/p",
+            "tool_input": {"nested": {"deep": True, "list": [1, 2, 3]}},
+        }
+        _stdin(monkeypatch, payload)
+        hooks.pre_tool_use()
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert events[0]["data"]["tool_input"] == {"nested": {"deep": True, "list": [1, 2, 3]}}
+
+    def test_large_payload(self, monkeypatch, env: Path):
+        big_data = {"session_id": "s1", "cwd": "/p", "content": "x" * 10000}
+        _stdin(monkeypatch, big_data)
+        hooks.stop()
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert len(events[0]["data"]["content"]) == 10000
+
+    def test_payload_with_special_chars(self, monkeypatch, env: Path):
+        payload = {
+            "session_id": "s1", "cwd": "/p",
+            "text": "line1\nline2\ttab\r\nwindows",
+        }
+        _stdin(monkeypatch, payload)
+        hooks.user_prompt_submit()
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert events[0]["data"]["text"] == "line1\nline2\ttab\r\nwindows"
+
+    def test_unicode_payload(self, monkeypatch, env: Path):
+        payload = {"session_id": "s1", "cwd": "/p", "text": "hello world"}
+        _stdin(monkeypatch, payload)
+        hooks.notification()
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert events[0]["data"]["text"] == "hello world"

@@ -3,6 +3,7 @@ from __future__ import annotations
 import click
 
 from atrace import __version__
+from atrace.commands.add import add
 from atrace.commands.ingest import ingest
 from atrace.commands.reads import event, events, list_sessions, search, show, stats, tail
 
@@ -13,6 +14,7 @@ def main() -> None:
     pass
 
 
+main.add_command(add)
 main.add_command(ingest)
 main.add_command(list_sessions)
 main.add_command(show)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Iterator
 
 from atrace.config import Config
-from atrace.meta import SessionMeta, read_meta
+from atrace.meta import SessionMeta, read_meta, write_meta
 from atrace.paths import (
     events_path,
     meta_path,
@@ -12,7 +12,7 @@ from atrace.paths import (
     sessions_root,
 )
 from atrace.reader import SessionReader
-from atrace.writer import SessionWriter
+from atrace.writer import SessionWriter, utc_iso_ms
 
 
 class Store:
@@ -120,3 +120,32 @@ class Store:
             "event_count": total_events,
             "bytes_compressed": total_bytes,
         }
+
+    def append_event(
+        self,
+        *,
+        session_id: str,
+        platform: str,
+        cwd: str,
+        t: str,
+        data: Any = None,
+    ) -> int:
+        sd = _session_dir(self.config.root, platform, session_id)
+        w = SessionWriter.open(sd, session_id=session_id, platform=platform, cwd=cwd)
+        try:
+            seq = w.append(t, data)
+        finally:
+            write_meta(meta_path(sd), w._meta)
+            w.flush_and_detach()
+        return seq
+
+    def close_session(self, session_id: str, *, platform: str) -> None:
+        sd = _session_dir(self.config.root, platform, session_id)
+        if not sd.exists():
+            return
+        m = read_meta(meta_path(sd))
+        if m is None:
+            return
+        m.status = "closed"
+        m.ended_at = utc_iso_ms()
+        write_meta(meta_path(sd), m)

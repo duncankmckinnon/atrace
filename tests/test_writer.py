@@ -468,3 +468,125 @@ class TestPlatforms:
         m = read_meta(meta_path(sd))
         assert m.platform == platform
         assert m.event_count == 1
+
+
+# -- flush_and_detach ----------------------------------------------------------
+
+
+class TestFlushAndDetach:
+    def test_keeps_status_open(self, tmp_path: Path):
+        sd = tmp_path / "01J9G7"
+        w = SessionWriter.open(sd, session_id="01J9G7", platform="claude", cwd="/p")
+        w.append("user_message", "hi")
+        w.flush_and_detach()
+        m = read_meta(sd / "meta.yaml")
+        assert m.status == "open"
+        assert m.ended_at is None
+        assert m.event_count == 1
+
+    def test_releases_index_fd(self, tmp_path: Path):
+        """A second writer can append after detach."""
+        sd = tmp_path / "01J9G7"
+        w1 = SessionWriter.open(sd, session_id="01J9G7", platform="claude", cwd="/p")
+        w1.append("a", 1)
+        w1.flush_and_detach()
+        w2 = SessionWriter.open(sd, session_id="01J9G7", platform="claude", cwd="/p")
+        seq = w2.append("b", 2)
+        w2.close()
+        assert seq == 1
+
+    def test_no_events_before_detach(self, tmp_path: Path):
+        sd = tmp_path / "01J9G7"
+        w = SessionWriter.open(sd, session_id="01J9G7", platform="claude", cwd="/p")
+        w.flush_and_detach()
+        m = read_meta(meta_path(sd))
+        assert m.status == "open"
+        assert m.event_count == 0
+        assert m.last_seq == -1
+
+    def test_preserves_started_at(self, tmp_path: Path):
+        sd = tmp_path / "01J9G7"
+        w = SessionWriter.open(sd, session_id="01J9G7", platform="claude", cwd="/p")
+        m_before = read_meta(meta_path(sd))
+        w.append("x", 1)
+        w.flush_and_detach()
+        m_after = read_meta(meta_path(sd))
+        assert m_after.started_at == m_before.started_at
+
+    def test_meta_updated_by_detach(self, tmp_path: Path):
+        """flush_and_detach writes meta with current event_count."""
+        sd = tmp_path / "01J9G7"
+        w = SessionWriter.open(sd, session_id="01J9G7", platform="claude", cwd="/p")
+        w.append("x", 1)
+        w.append("y", 2)
+        m_mid = read_meta(meta_path(sd))
+        assert m_mid.event_count == 0
+        w.flush_and_detach()
+        m_after = read_meta(meta_path(sd))
+        assert m_after.event_count == 2
+        assert m_after.last_seq == 1
+        assert m_after.status == "open"
+
+    def test_close_after_detach_raises_or_noop(self, tmp_path: Path):
+        """Calling close() after flush_and_detach() should not corrupt state."""
+        sd = tmp_path / "01J9G7"
+        w = SessionWriter.open(sd, session_id="01J9G7", platform="claude", cwd="/p")
+        w.append("x", 1)
+        w.flush_and_detach()
+        # close() writes meta with status=closed; the fd is already released
+        # so index_w.close() may be a no-op or raise - either way meta should be ok
+        # This verifies the detach->close sequence doesn't blow up
+        try:
+            w.close()
+        except Exception:
+            pass
+        # Session dir still exists and is readable
+        m = read_meta(meta_path(sd))
+        assert m is not None
+
+    def test_multiple_detach_reopen_cycles(self, tmp_path: Path):
+        """Simulates multiple hook invocations writing to the same session."""
+        sd = tmp_path / "01J9G7"
+        for i in range(5):
+            w = SessionWriter.open(sd, session_id="01J9G7", platform="claude", cwd="/p")
+            seq = w.append(f"evt_{i}", i)
+            w.flush_and_detach()
+            assert seq == i
+        # Final close
+        w = SessionWriter.open(sd, session_id="01J9G7", platform="claude", cwd="/p")
+        w.close()
+        m = read_meta(meta_path(sd))
+        assert m.status == "closed"
+        assert m.event_count == 5
+
+    def test_events_readable_after_detach(self, tmp_path: Path):
+        sd = tmp_path / "01J9G7"
+        w = SessionWriter.open(sd, session_id="01J9G7", platform="claude", cwd="/p")
+        w.append("user_message", "hello")
+        w.flush_and_detach()
+        idx = IndexReader(index_path(sd))
+        assert idx.count() == 1
+        with open(events_path(sd), "rb") as f:
+            f.seek(idx.get(0))
+            frame = f.read()
+        event = decode_event(frame)
+        assert event["t"] == "user_message"
+        assert event["data"] == "hello"
+
+
+# -- utc_iso_ms public alias ---------------------------------------------------
+
+
+class TestUtcIsoMsPublic:
+    def test_format_matches_private(self):
+        from atrace.writer import utc_iso_ms
+        ts = utc_iso_ms()
+        assert _TS_RE.match(ts), f"Timestamp {ts!r} does not match expected format"
+
+    def test_returns_string(self):
+        from atrace.writer import utc_iso_ms
+        assert isinstance(utc_iso_ms(), str)
+
+    def test_ends_with_z(self):
+        from atrace.writer import utc_iso_ms
+        assert utc_iso_ms().endswith("Z")

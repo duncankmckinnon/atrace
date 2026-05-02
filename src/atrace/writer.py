@@ -17,6 +17,10 @@ def _utc_iso_ms() -> str:
     return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
 
 
+def utc_iso_ms() -> str:
+    return _utc_iso_ms()
+
+
 class SessionWriter:
     def __init__(self, session_dir: Path, meta: SessionMeta) -> None:
         self.session_dir = session_dir
@@ -90,10 +94,16 @@ class SessionWriter:
         self._meta.last_ts = ts
         return seq
 
+    def flush_and_detach(self) -> None:
+        self._index_w.close()
+        write_meta(self._meta_path, self._meta)
+
     def close(self, *, status: str = "closed") -> None:
         self._index_w.close()
         self._meta.status = status
         self._meta.ended_at = _utc_iso_ms()
+        self._meta.event_count = self._next_seq
+        self._meta.last_seq = self._next_seq - 1 if self._next_seq > 0 else -1
         write_meta(self._meta_path, self._meta)
 
     def __enter__(self) -> "SessionWriter":
