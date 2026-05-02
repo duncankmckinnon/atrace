@@ -1,0 +1,47 @@
+from __future__ import annotations
+
+from atrace.platforms.claude.constants import (
+    DISPLAY_NAME,
+    HOOK_EVENTS,
+    PLATFORM_NAME,
+    SETTINGS_FILE,
+)
+
+
+def test_platform_name():
+    assert PLATFORM_NAME == "claude"
+
+
+def test_display_name():
+    assert DISPLAY_NAME == "Claude Code"
+
+
+def test_settings_file_under_claude_home():
+    parts = SETTINGS_FILE.parts
+    assert ".claude" in parts
+    assert parts[-1] == "settings.json"
+
+
+def test_hook_events_covers_known_lifecycle():
+    expected = {
+        "SessionStart",
+        "UserPromptSubmit",
+        "PreToolUse",
+        "PostToolUse",
+        "Stop",
+        "SubagentStop",
+        "StopFailure",
+        "Notification",
+        "PermissionRequest",
+        "SessionEnd",
+    }
+    assert set(HOOK_EVENTS.keys()) == expected
+
+
+def test_hook_event_scripts_unique():
+    assert len(set(HOOK_EVENTS.values())) == len(HOOK_EVENTS)
+
+
+def test_hook_event_scripts_have_atrace_prefix():
+    for script in HOOK_EVENTS.values():
+        assert script.startswith("atrace-claude-")
