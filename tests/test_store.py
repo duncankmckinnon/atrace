@@ -265,3 +265,202 @@ class TestStoreInit:
         cfg = Config(root=tmp_path)
         store = Store(cfg)
         assert store.config is cfg
+
+
+# -- append_event --------------------------------------------------------------
+
+
+class TestAppendEvent:
+    def test_one_shot(self, tmp_store: Store):
+        seq = tmp_store.append_event(
+            session_id="01J9G7XK4P", platform="claude", cwd="/p",
+            t="user_message", data="hi",
+        )
+        assert seq == 0
+        metas = list(tmp_store.list_sessions())
+        assert len(metas) == 1
+        assert metas[0].session_id == "01J9G7XK4P"
+        assert metas[0].status == "open"
+        assert metas[0].event_count == 1
+
+    def test_appends_to_existing_session(self, tmp_store: Store):
+        tmp_store.append_event(
+            session_id="01J9G7XK4P", platform="claude", cwd="/p",
+            t="user_message", data="hi",
+        )
+        seq = tmp_store.append_event(
+            session_id="01J9G7XK4P", platform="claude", cwd="/p",
+            t="assistant_message", data="hello",
+        )
+        assert seq == 1
+
+    def test_returns_int(self, tmp_store: Store):
+        result = tmp_store.append_event(
+            session_id="SID1", platform="claude", cwd="/p",
+            t="x", data=1,
+        )
+        assert isinstance(result, int)
+
+    def test_data_none_accepted(self, tmp_store: Store):
+        seq = tmp_store.append_event(
+            session_id="SID1", platform="claude", cwd="/p",
+            t="session_start",
+        )
+        assert seq == 0
+
+    def test_complex_data(self, tmp_store: Store):
+        payload = {"tool_name": "Read", "args": {"path": "/foo"}, "nested": [1, 2]}
+        seq = tmp_store.append_event(
+            session_id="SID1", platform="claude", cwd="/p",
+            t="tool_call", data=payload,
+        )
+        assert seq == 0
+        r = tmp_store.reader("SID1")
+        events = list(r.iter_events())
+        assert events[0]["data"] == payload
+
+    def test_event_readable_after_append(self, tmp_store: Store):
+        tmp_store.append_event(
+            session_id="SID1", platform="claude", cwd="/p",
+            t="user_message", data="hello",
+        )
+        r = tmp_store.reader("SID1")
+        events = list(r.iter_events())
+        assert len(events) == 1
+        assert events[0]["t"] == "user_message"
+        assert events[0]["data"] == "hello"
+
+    def test_many_sequential_appends(self, tmp_store: Store):
+        for i in range(10):
+            seq = tmp_store.append_event(
+                session_id="SID1", platform="claude", cwd="/p",
+                t=f"evt_{i}", data=i,
+            )
+            assert seq == i
+        m = tmp_store.get_meta("SID1")
+        assert m.event_count == 10
+
+    def test_different_sessions_independent(self, tmp_store: Store):
+        tmp_store.append_event(
+            session_id="SID_A", platform="claude", cwd="/p",
+            t="a", data=1,
+        )
+        tmp_store.append_event(
+            session_id="SID_B", platform="claude", cwd="/q",
+            t="b", data=2,
+        )
+        metas = sorted(tmp_store.list_sessions(), key=lambda m: m.session_id)
+        assert len(metas) == 2
+        assert metas[0].session_id == "SID_A"
+        assert metas[1].session_id == "SID_B"
+
+    def test_session_stays_open_after_append(self, tmp_store: Store):
+        tmp_store.append_event(
+            session_id="SID1", platform="claude", cwd="/p",
+            t="x", data=1,
+        )
+        m = tmp_store.get_meta("SID1")
+        assert m.status == "open"
+        assert m.ended_at is None
+
+    def test_different_platforms(self, tmp_store: Store):
+        tmp_store.append_event(
+            session_id="SID1", platform="claude", cwd="/p",
+            t="x", data=1,
+        )
+        tmp_store.append_event(
+            session_id="SID2", platform="cursor", cwd="/p",
+            t="y", data=2,
+        )
+        claude_sessions = list(tmp_store.list_sessions(platform="claude"))
+        cursor_sessions = list(tmp_store.list_sessions(platform="cursor"))
+        assert len(claude_sessions) == 1
+        assert len(cursor_sessions) == 1
+
+
+# -- close_session -------------------------------------------------------------
+
+
+class TestCloseSession:
+    def test_marks_closed(self, tmp_store: Store):
+        tmp_store.append_event(
+            session_id="01J9G7XK4P", platform="claude", cwd="/p",
+            t="x", data=1,
+        )
+        tmp_store.close_session("01J9G7XK4P", platform="claude")
+        m = next(tmp_store.list_sessions())
+        assert m.status == "closed"
+        assert m.ended_at is not None
+
+    def test_no_op_for_missing_session(self, tmp_store: Store):
+        tmp_store.close_session("does-not-exist", platform="claude")
+
+    def test_no_op_for_missing_platform(self, tmp_store: Store):
+        tmp_store.append_event(
+            session_id="SID1", platform="claude", cwd="/p",
+            t="x", data=1,
+        )
+        tmp_store.close_session("SID1", platform="cursor")
+        # Original session should still be open
+        m = tmp_store.get_meta("SID1")
+        assert m.status == "open"
+
+    def test_sets_ended_at_timestamp(self, tmp_store: Store):
+        import re
+        ts_re = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
+        tmp_store.append_event(
+            session_id="SID1", platform="claude", cwd="/p",
+            t="x", data=1,
+        )
+        tmp_store.close_session("SID1", platform="claude")
+        m = tmp_store.get_meta("SID1")
+        assert ts_re.match(m.ended_at)
+
+    def test_preserves_event_count(self, tmp_store: Store):
+        for i in range(3):
+            tmp_store.append_event(
+                session_id="SID1", platform="claude", cwd="/p",
+                t=f"evt_{i}", data=i,
+            )
+        tmp_store.close_session("SID1", platform="claude")
+        m = tmp_store.get_meta("SID1")
+        assert m.event_count == 3
+
+    def test_preserves_started_at(self, tmp_store: Store):
+        tmp_store.append_event(
+            session_id="SID1", platform="claude", cwd="/p",
+            t="x", data=1,
+        )
+        started = tmp_store.get_meta("SID1").started_at
+        tmp_store.close_session("SID1", platform="claude")
+        m = tmp_store.get_meta("SID1")
+        assert m.started_at == started
+
+    def test_close_then_append_reopens(self, tmp_store: Store):
+        tmp_store.append_event(
+            session_id="SID1", platform="claude", cwd="/p",
+            t="a", data=1,
+        )
+        tmp_store.close_session("SID1", platform="claude")
+        assert tmp_store.get_meta("SID1").status == "closed"
+        seq = tmp_store.append_event(
+            session_id="SID1", platform="claude", cwd="/p",
+            t="b", data=2,
+        )
+        assert seq == 1
+        assert tmp_store.get_meta("SID1").status == "open"
+
+    def test_idempotent_close(self, tmp_store: Store):
+        tmp_store.append_event(
+            session_id="SID1", platform="claude", cwd="/p",
+            t="x", data=1,
+        )
+        tmp_store.close_session("SID1", platform="claude")
+        tmp_store.close_session("SID1", platform="claude")
+        m = tmp_store.get_meta("SID1")
+        assert m.status == "closed"
+
+    def test_no_op_when_session_dir_exists_but_no_meta(self, tmp_store: Store):
+        sd = session_dir(tmp_store.config.root, "claude", "ORPHAN")
+        sd.mkdir(parents=True)
+        tmp_store.close_session("ORPHAN", platform="claude")
