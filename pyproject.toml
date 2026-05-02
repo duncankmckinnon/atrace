@@ -15,6 +15,16 @@ dependencies = [
 
 [project.scripts]
 atrace = "atrace.cli:main"
+atrace-claude-session-start = "atrace.platforms.claude.hooks:session_start"
+atrace-claude-user-prompt-submit = "atrace.platforms.claude.hooks:user_prompt_submit"
+atrace-claude-pre-tool-use = "atrace.platforms.claude.hooks:pre_tool_use"
+atrace-claude-post-tool-use = "atrace.platforms.claude.hooks:post_tool_use"
+atrace-claude-stop = "atrace.platforms.claude.hooks:stop"
+atrace-claude-subagent-stop = "atrace.platforms.claude.hooks:subagent_stop"
+atrace-claude-stop-failure = "atrace.platforms.claude.hooks:stop_failure"
+atrace-claude-notification = "atrace.platforms.claude.hooks:notification"
+atrace-claude-permission-request = "atrace.platforms.claude.hooks:permission_request"
+atrace-claude-session-end = "atrace.platforms.claude.hooks:session_end"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
