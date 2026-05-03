@@ -10,16 +10,28 @@ PLATFORMS: dict[str, type[Platform]] = {
 }
 
 
-@click.command(help="Install (or remove) tracing hooks for an agentic platform.")
-@click.option("--claude", "platform_flag", flag_value="claude", help="Claude Code.")
-@click.option("--remove", is_flag=True, help="Uninstall instead of install.")
-def add(platform_flag: str | None, remove: bool) -> None:
+def _platform_options(fn):
+    fn = click.option("--claude", "platform_flag", flag_value="claude", help="Claude Code.")(fn)
+    return fn
+
+
+def _resolve_platform(platform_flag: str | None) -> Platform:
     if not platform_flag:
         raise click.UsageError("Pick a platform: --claude")
-    platform = PLATFORMS[platform_flag]()
-    if remove:
-        platform.uninstall()
-        click.echo(f"Removed tracing for {platform.display_name}")
-    else:
-        platform.install()
-        click.echo(f"Installed tracing for {platform.display_name}")
+    return PLATFORMS[platform_flag]()
+
+
+@click.command(help="Install tracing hooks for an agentic platform.")
+@_platform_options
+def add(platform_flag: str | None) -> None:
+    platform = _resolve_platform(platform_flag)
+    platform.install()
+    click.echo(f"Installed tracing for {platform.display_name}")
+
+
+@click.command(help="Remove tracing hooks for an agentic platform.")
+@_platform_options
+def remove(platform_flag: str | None) -> None:
+    platform = _resolve_platform(platform_flag)
+    platform.uninstall()
+    click.echo(f"Removed tracing for {platform.display_name}")

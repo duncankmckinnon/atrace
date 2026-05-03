@@ -14,7 +14,7 @@ pipx install thrdi        # or: uv tool install thrdi
 thirdeye add --claude        # also: --cursor, --codex, --gemini, --copilot
 ```
 
-To detach: `thirdeye add --claude --remove`.
+To detach: `thirdeye remove --claude`.
 
 ## Read your history
 
