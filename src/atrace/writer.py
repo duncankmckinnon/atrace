@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import fcntl
 import os
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +13,7 @@ from atrace.paths import events_path, index_path, meta_path
 
 
 def _utc_iso_ms() -> str:
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
     return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
 
 

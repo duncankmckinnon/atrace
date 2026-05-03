@@ -31,7 +31,7 @@ class TestPackageMetadata:
 
     def test_requires_python(self):
         meta = importlib.metadata.metadata("atrace")
-        assert meta["Requires-Python"] == ">=3.11"
+        assert meta["Requires-Python"] == ">=3.10"
 
     def test_license(self):
         meta = importlib.metadata.metadata("atrace")

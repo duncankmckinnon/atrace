@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.11", "3.12", "3.13"]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,9 +33,9 @@ jobs:
           enable-cache: true
       - name: Set up Python ${{ matrix.python }}
         run: uv python install ${{ matrix.python }}
-      - run: uv sync --dev
+      - run: uv sync --dev --python ${{ matrix.python }}
       - name: Run tests with coverage
-        run: uv run pytest -v
+        run: uv run --python ${{ matrix.python }} pytest -v
       - name: Upload coverage to Codecov
         if: matrix.python == '3.12'
         uses: codecov/codecov-action@v4
