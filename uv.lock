@@ -3,39 +3,6 @@ revision = 3
 requires-python = ">=3.10"
 
 [[package]]
-name = "thirdeye"
-source = { editable = "." }
-dependencies = [
-    { name = "click" },
-    { name = "msgpack" },
-    { name = "pyaml" },
-    { name = "zstandard" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "build" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "build", marker = "extra == 'dev'", specifier = ">=1.2" },
-    { name = "click", specifier = ">=8.1" },
-    { name = "msgpack", specifier = ">=1.0" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.7" },
-    { name = "pyaml", specifier = ">=23.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
-    { name = "zstandard", specifier = ">=0.22" },
-]
-provides-extras = ["dev"]
-
-[[package]]
 name = "build"
 version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -535,6 +502,39 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/33/f1/9614e03e1cdcbf9437570b5400ced8a720b5db22b28d8e0f1bda429f660d/ruff-0.15.12-py3-none-win_amd64.whl", hash = "sha256:c87a162d61ab3adca47c03f7f717c68672edec7d1b5499e652331780fe74950d", size = 11837758, upload-time = "2026-04-24T18:17:00.113Z" },
     { url = "https://files.pythonhosted.org/packages/c0/98/6beb4b351e472e5f4c4613f7c35a5290b8be2497e183825310c4c3a3984b/ruff-0.15.12-py3-none-win_arm64.whl", hash = "sha256:a538f7a82d061cee7be55542aca1d86d1393d55d81d4fcc314370f4340930d4f", size = 11120821, upload-time = "2026-04-24T18:16:57.979Z" },
 ]
+
+[[package]]
+name = "thrdi"
+source = { editable = "." }
+dependencies = [
+    { name = "click" },
+    { name = "msgpack" },
+    { name = "pyaml" },
+    { name = "zstandard" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "build" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "build", marker = "extra == 'dev'", specifier = ">=1.2" },
+    { name = "click", specifier = ">=8.1" },
+    { name = "msgpack", specifier = ">=1.0" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.7" },
+    { name = "pyaml", specifier = ">=23.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
+    { name = "zstandard", specifier = ">=0.22" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "tomli"

@@ -20,28 +20,28 @@ class TestPackageMetadata:
         assert thirdeye.__version__[0].isdigit()
 
     def test_installed_metadata_name(self):
-        meta = importlib.metadata.metadata("thirdeye")
-        assert meta["Name"] == "thirdeye"
+        meta = importlib.metadata.metadata("thrdi")
+        assert meta["Name"] == "thrdi"
 
     def test_installed_metadata_version(self):
-        meta = importlib.metadata.metadata("thirdeye")
+        meta = importlib.metadata.metadata("thrdi")
         # tag-derived; just confirm it's set and starts with a digit
         assert meta["Version"]
         assert meta["Version"][0].isdigit()
 
     def test_requires_python(self):
-        meta = importlib.metadata.metadata("thirdeye")
+        meta = importlib.metadata.metadata("thrdi")
         assert meta["Requires-Python"] == ">=3.10"
 
     def test_license(self):
-        meta = importlib.metadata.metadata("thirdeye")
+        meta = importlib.metadata.metadata("thrdi")
         assert "MIT" in (meta.get("License") or meta.get("License-Expression") or "")
 
 
 class TestDependencies:
     @pytest.mark.parametrize("dep", ["click", "msgpack", "zstandard", "pyaml"])
     def test_runtime_dependency_declared(self, dep):
-        requires = importlib.metadata.requires("thirdeye") or []
+        requires = importlib.metadata.requires("thrdi") or []
         dep_names = [
             r.split()[0].split(">")[0].split("<")[0].split("=")[0].split("!")[0].split(";")[0]
             for r in requires

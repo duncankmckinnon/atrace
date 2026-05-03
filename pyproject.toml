@@ -1,5 +1,5 @@
 [project]
-name = "thirdeye"
+name = "thrdi"
 dynamic = ["version"]
 description = "Trace any agentic CLI to a unified local store, queryable from the CLI."
 readme = "README.md"

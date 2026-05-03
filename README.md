@@ -5,7 +5,7 @@ Trace every agent session on your machine — Claude Code, Cursor, Codex, Gemini
 ## Install
 
 ```bash
-pipx install thirdeye        # or: uv tool install thirdeye
+pipx install thrdi        # or: uv tool install thrdi
 ```
 
 ## Enable tracing
