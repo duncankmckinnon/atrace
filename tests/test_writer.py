@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from atrace.codec import decode_event
-from atrace.index import IndexReader
-from atrace.meta import SessionMeta, read_meta, write_meta
-from atrace.paths import events_path, index_path, meta_path
-from atrace.writer import SessionWriter, _utc_iso_ms
+from thirdeye.codec import decode_event
+from thirdeye.index import IndexReader
+from thirdeye.meta import SessionMeta, read_meta, write_meta
+from thirdeye.paths import events_path, index_path, meta_path
+from thirdeye.writer import SessionWriter, _utc_iso_ms
 
 # -- helpers -------------------------------------------------------------------
 
@@ -364,7 +364,7 @@ class TestIndexRebuildOnOpen:
         sd = tmp_path / "01J9G7XK4P"
         sd.mkdir(parents=True)
         # Create an events log with one event but no index entries
-        from atrace.codec import encode_event
+        from thirdeye.codec import encode_event
 
         frame = encode_event({"t": "x", "ts": "2026-04-30T00:00:00.000Z", "seq": 0})
         with open(events_path(sd), "wb") as f:
@@ -573,17 +573,17 @@ class TestFlushAndDetach:
 
 class TestUtcIsoMsPublic:
     def test_format_matches_private(self):
-        from atrace.writer import utc_iso_ms
+        from thirdeye.writer import utc_iso_ms
 
         ts = utc_iso_ms()
         assert _TS_RE.match(ts), f"Timestamp {ts!r} does not match expected format"
 
     def test_returns_string(self):
-        from atrace.writer import utc_iso_ms
+        from thirdeye.writer import utc_iso_ms
 
         assert isinstance(utc_iso_ms(), str)
 
     def test_ends_with_z(self):
-        from atrace.writer import utc_iso_ms
+        from thirdeye.writer import utc_iso_ms
 
         assert utc_iso_ms().endswith("Z")

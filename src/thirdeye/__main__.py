@@ -1,4 +1,4 @@
-from atrace.cli import main
+from thirdeye.cli import main
 
 if __name__ == "__main__":
     main()

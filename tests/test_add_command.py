@@ -5,9 +5,9 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-from atrace.cli import main
-from atrace.commands.add import PLATFORMS
-from atrace.platforms.claude.install import ClaudePlatform
+from thirdeye.cli import main
+from thirdeye.commands.add import PLATFORMS
+from thirdeye.platforms.claude.install import ClaudePlatform
 
 # -- command registration ------------------------------------------------------
 
@@ -68,7 +68,7 @@ def test_add_claude_creates_settings_file(tmp_path: Path, monkeypatch):
 
 
 def test_add_claude_registers_all_hook_events(tmp_path: Path, monkeypatch):
-    from atrace.platforms.claude.constants import HOOK_EVENTS
+    from thirdeye.platforms.claude.constants import HOOK_EVENTS
 
     settings = tmp_path / "settings.json"
     monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
@@ -179,7 +179,7 @@ def test_existing_commands_still_registered():
 
 def test_ingest_still_works(tmp_path: Path):
     runner = CliRunner()
-    env = {"ATRACE_HOME": str(tmp_path)}
+    env = {"THIRDEYE_HOME": str(tmp_path)}
     payload = json.dumps({"t": "msg", "data": "hi"}) + "\n"
     r = runner.invoke(
         main,
@@ -194,14 +194,14 @@ def test_ingest_still_works(tmp_path: Path):
 
 
 def test_platforms_dict_has_claude():
-    from atrace.commands.add import PLATFORMS
+    from thirdeye.commands.add import PLATFORMS
 
     assert "claude" in PLATFORMS
     assert PLATFORMS["claude"] is ClaudePlatform
 
 
 def test_platform_flag_value_maps_to_platforms_key():
-    from atrace.commands.add import PLATFORMS
+    from thirdeye.commands.add import PLATFORMS
 
     for key, cls in PLATFORMS.items():
         instance = cls(settings_file=Path("/fake"))
@@ -215,7 +215,7 @@ def test_add_uses_platforms_dict(tmp_path: Path, monkeypatch):
     """The add command should dispatch via PLATFORMS[platform_flag](), not hardcode ClaudePlatform()."""
     from unittest.mock import MagicMock
 
-    from atrace.commands.add import PLATFORMS
+    from thirdeye.commands.add import PLATFORMS
 
     mock_platform = MagicMock()
     mock_platform.display_name = "Mock Platform"
@@ -232,7 +232,7 @@ def test_add_remove_uses_platforms_dict(tmp_path: Path, monkeypatch):
     """The add --remove command should dispatch via PLATFORMS[platform_flag](), not hardcode ClaudePlatform()."""
     from unittest.mock import MagicMock
 
-    from atrace.commands.add import PLATFORMS
+    from thirdeye.commands.add import PLATFORMS
 
     mock_platform = MagicMock()
     mock_platform.display_name = "Mock Platform"
@@ -273,7 +273,7 @@ def test_add_claude_hook_entries_have_command_type(tmp_path: Path, monkeypatch):
                 assert "command" in hook, f"{event_name} hook missing command key"
 
 
-def test_add_claude_hook_commands_contain_atrace(tmp_path: Path, monkeypatch):
+def test_add_claude_hook_commands_contain_thirdeye(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
     monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     CliRunner().invoke(main, ["add", "--claude"])
@@ -282,4 +282,4 @@ def test_add_claude_hook_commands_contain_atrace(tmp_path: Path, monkeypatch):
         for entry in entries:
             for hook in entry["hooks"]:
                 cmd = hook["command"]
-                assert "atrace" in cmd, f"{event_name} command {cmd!r} missing 'atrace'"
+                assert "thirdeye" in cmd, f"{event_name} command {cmd!r} missing 'thirdeye'"

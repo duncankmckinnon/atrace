@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from atrace.codec import encode_event
-from atrace.index import IndexReader, IndexWriter, rebuild_index
+from thirdeye.codec import encode_event
+from thirdeye.index import IndexReader, IndexWriter, rebuild_index
 
 
 class TestIndexWriter:

@@ -9,21 +9,21 @@ from pathlib import Path
 
 import pytest
 
-from atrace.platforms.claude.constants import HOOK_EVENTS
+from thirdeye.platforms.claude.constants import HOOK_EVENTS
 
 ROOT = Path(__file__).resolve().parent.parent
 
 EXPECTED_SCRIPTS: dict[str, str] = {
-    "atrace-claude-session-start": "atrace.platforms.claude.hooks:session_start",
-    "atrace-claude-user-prompt-submit": "atrace.platforms.claude.hooks:user_prompt_submit",
-    "atrace-claude-pre-tool-use": "atrace.platforms.claude.hooks:pre_tool_use",
-    "atrace-claude-post-tool-use": "atrace.platforms.claude.hooks:post_tool_use",
-    "atrace-claude-stop": "atrace.platforms.claude.hooks:stop",
-    "atrace-claude-subagent-stop": "atrace.platforms.claude.hooks:subagent_stop",
-    "atrace-claude-stop-failure": "atrace.platforms.claude.hooks:stop_failure",
-    "atrace-claude-notification": "atrace.platforms.claude.hooks:notification",
-    "atrace-claude-permission-request": "atrace.platforms.claude.hooks:permission_request",
-    "atrace-claude-session-end": "atrace.platforms.claude.hooks:session_end",
+    "thirdeye-claude-session-start": "thirdeye.platforms.claude.hooks:session_start",
+    "thirdeye-claude-user-prompt-submit": "thirdeye.platforms.claude.hooks:user_prompt_submit",
+    "thirdeye-claude-pre-tool-use": "thirdeye.platforms.claude.hooks:pre_tool_use",
+    "thirdeye-claude-post-tool-use": "thirdeye.platforms.claude.hooks:post_tool_use",
+    "thirdeye-claude-stop": "thirdeye.platforms.claude.hooks:stop",
+    "thirdeye-claude-subagent-stop": "thirdeye.platforms.claude.hooks:subagent_stop",
+    "thirdeye-claude-stop-failure": "thirdeye.platforms.claude.hooks:stop_failure",
+    "thirdeye-claude-notification": "thirdeye.platforms.claude.hooks:notification",
+    "thirdeye-claude-permission-request": "thirdeye.platforms.claude.hooks:permission_request",
+    "thirdeye-claude-session-end": "thirdeye.platforms.claude.hooks:session_end",
 }
 
 
@@ -42,8 +42,8 @@ class TestPyprojectScriptEntries:
         for script_name, target in EXPECTED_SCRIPTS.items():
             assert f'{script_name} = "{target}"' in self.content
 
-    def test_original_atrace_script_preserved(self):
-        assert 'atrace = "atrace.cli:main"' in self.content
+    def test_original_thirdeye_script_preserved(self):
+        assert 'thirdeye = "thirdeye.cli:main"' in self.content
 
     def test_exactly_eleven_scripts(self):
         in_scripts = False
@@ -58,35 +58,35 @@ class TestPyprojectScriptEntries:
                     break
                 if "=" in stripped and stripped and not stripped.startswith("#"):
                     count += 1
-        assert count == 11, f"Expected 11 script entries (1 atrace + 10 hooks), got {count}"
+        assert count == 11, f"Expected 11 script entries (1 thirdeye + 10 hooks), got {count}"
 
 
 class TestConsoleScriptsRegistered:
     """Verify installed metadata exposes the Claude hook entry points."""
 
-    def _get_atrace_console_scripts(self) -> dict[str, str]:
+    def _get_thirdeye_console_scripts(self) -> dict[str, str]:
         eps = importlib.metadata.entry_points(group="console_scripts")
-        return {ep.name: ep.value for ep in eps if ep.name.startswith("atrace")}
+        return {ep.name: ep.value for ep in eps if ep.name.startswith("thirdeye")}
 
     @pytest.mark.parametrize("script_name,target", list(EXPECTED_SCRIPTS.items()))
     def test_entrypoint_registered(self, script_name, target):
-        scripts = self._get_atrace_console_scripts()
+        scripts = self._get_thirdeye_console_scripts()
         assert (
             script_name in scripts
         ), f"{script_name} not in registered console_scripts: {sorted(scripts.keys())}"
         assert scripts[script_name] == target
 
     def test_all_ten_hooks_registered(self):
-        scripts = self._get_atrace_console_scripts()
+        scripts = self._get_thirdeye_console_scripts()
         for name, target in EXPECTED_SCRIPTS.items():
             assert name in scripts
             assert scripts[name] == target
 
-    def test_total_atrace_entrypoints(self):
-        scripts = self._get_atrace_console_scripts()
+    def test_total_thirdeye_entrypoints(self):
+        scripts = self._get_thirdeye_console_scripts()
         assert (
             len(scripts) == 11
-        ), f"Expected 11 atrace-* console scripts, got {len(scripts)}: {sorted(scripts.keys())}"
+        ), f"Expected 11 thirdeye-* console scripts, got {len(scripts)}: {sorted(scripts.keys())}"
 
 
 class TestScriptNamesMatchConstants:
@@ -141,5 +141,5 @@ class TestScriptBinaryExists:
     def test_script_binary_in_venv(self, script_name):
         assert shutil.which(script_name) is not None, f"Script {script_name} not found on PATH"
 
-    def test_atrace_binary_still_exists(self):
-        assert shutil.which("atrace") is not None
+    def test_thirdeye_binary_still_exists(self):
+        assert shutil.which("thirdeye") is not None

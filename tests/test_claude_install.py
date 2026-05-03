@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from atrace.platforms.claude.constants import HOOK_EVENTS
-from atrace.platforms.claude.install import ClaudePlatform
+from thirdeye.platforms.claude.constants import HOOK_EVENTS
+from thirdeye.platforms.claude.install import ClaudePlatform
 
 
 class TestClaudePlatformAttributes:
@@ -17,7 +17,7 @@ class TestClaudePlatformAttributes:
         assert p.display_name == "Claude Code"
 
     def test_is_platform_subclass(self):
-        from atrace.platforms.base import Platform
+        from thirdeye.platforms.base import Platform
 
         assert issubclass(ClaudePlatform, Platform)
 
@@ -128,7 +128,7 @@ class TestInstallPreservesExisting:
         settings = json.loads(settings_file.read_text())
         cmds = [h["command"] for entry in settings["hooks"]["SessionStart"] for h in entry["hooks"]]
         assert "/some/other/tool" in cmds
-        assert any("atrace-claude-session-start" in c for c in cmds)
+        assert any("thirdeye-claude-session-start" in c for c in cmds)
 
     def test_preserves_hooks_for_unknown_events(self, tmp_path: Path):
         settings_file = tmp_path / "settings.json"
@@ -214,7 +214,7 @@ class TestUninstallRemovesHooks:
         settings = json.loads(settings_file.read_text())
         cmds = [h["command"] for entry in settings["hooks"]["SessionStart"] for h in entry["hooks"]]
         assert "/some/other/tool" in cmds
-        assert not any("atrace-claude-session-start" in c for c in cmds)
+        assert not any("thirdeye-claude-session-start" in c for c in cmds)
 
     def test_preserves_other_settings_on_uninstall(self, tmp_path: Path):
         settings_file = tmp_path / "settings.json"
@@ -287,7 +287,7 @@ class TestUninstallEdgeCases:
 
 class TestDefaultSettingsFile:
     def test_default_settings_file_matches_constants(self):
-        from atrace.platforms.claude.constants import SETTINGS_FILE
+        from thirdeye.platforms.claude.constants import SETTINGS_FILE
 
         p = ClaudePlatform()
         assert p._settings_file == SETTINGS_FILE
@@ -321,7 +321,7 @@ class TestResolveCommandAbsolutePath:
         def fake_which(name):
             return f"/usr/local/bin/{name}"
 
-        monkeypatch.setattr("atrace.platforms.claude.install.shutil.which", fake_which)
+        monkeypatch.setattr("thirdeye.platforms.claude.install.shutil.which", fake_which)
         ClaudePlatform(settings_file=settings_file).install()
         settings = json.loads(settings_file.read_text())
         for event, script in HOOK_EVENTS.items():
@@ -330,7 +330,7 @@ class TestResolveCommandAbsolutePath:
 
     def test_install_falls_back_to_bare_name_when_which_fails(self, tmp_path: Path, monkeypatch):
         settings_file = tmp_path / "settings.json"
-        monkeypatch.setattr("atrace.platforms.claude.install.shutil.which", lambda _: None)
+        monkeypatch.setattr("thirdeye.platforms.claude.install.shutil.which", lambda _: None)
         ClaudePlatform(settings_file=settings_file).install()
         settings = json.loads(settings_file.read_text())
         for event, script in HOOK_EVENTS.items():
@@ -343,7 +343,7 @@ class TestResolveCommandAbsolutePath:
         def fake_which(name):
             return f"/usr/local/bin/{name}"
 
-        monkeypatch.setattr("atrace.platforms.claude.install.shutil.which", fake_which)
+        monkeypatch.setattr("thirdeye.platforms.claude.install.shutil.which", fake_which)
         p = ClaudePlatform(settings_file=settings_file)
         p.install()
         p.uninstall()
@@ -356,7 +356,7 @@ class TestResolveCommandAbsolutePath:
         def fake_which(name):
             return f"/opt/bin/{name}"
 
-        monkeypatch.setattr("atrace.platforms.claude.install.shutil.which", fake_which)
+        monkeypatch.setattr("thirdeye.platforms.claude.install.shutil.which", fake_which)
         p = ClaudePlatform(settings_file=settings_file)
         p.install()
         first = settings_file.read_text()
@@ -367,9 +367,9 @@ class TestResolveCommandAbsolutePath:
 
 class TestUninstallMixedEntries:
     def test_entry_with_mixed_hooks_is_kept(self, tmp_path: Path, monkeypatch):
-        """An entry containing both an atrace hook and a foreign hook is kept
+        """An entry containing both an thirdeye hook and a foreign hook is kept
         because not ALL hooks in the entry are ours."""
-        monkeypatch.setattr("atrace.platforms.claude.install.shutil.which", lambda _: None)
+        monkeypatch.setattr("thirdeye.platforms.claude.install.shutil.which", lambda _: None)
         settings_file = tmp_path / "settings.json"
         settings_file.write_text(
             json.dumps(
@@ -378,7 +378,7 @@ class TestUninstallMixedEntries:
                         "SessionStart": [
                             {
                                 "hooks": [
-                                    {"type": "command", "command": "atrace-claude-session-start"},
+                                    {"type": "command", "command": "thirdeye-claude-session-start"},
                                     {"type": "command", "command": "/foreign/tool"},
                                 ]
                             }
@@ -391,7 +391,7 @@ class TestUninstallMixedEntries:
         settings = json.loads(settings_file.read_text())
         assert "SessionStart" in settings["hooks"]
         cmds = [h["command"] for entry in settings["hooks"]["SessionStart"] for h in entry["hooks"]]
-        assert "atrace-claude-session-start" in cmds
+        assert "thirdeye-claude-session-start" in cmds
         assert "/foreign/tool" in cmds
 
     def test_entry_with_empty_hooks_list_is_kept(self, tmp_path: Path):
@@ -414,7 +414,7 @@ class TestUninstallMixedEntries:
         # all() on empty iterable is True, so the entry IS removed
         assert "hooks" not in settings or "SessionStart" not in settings.get("hooks", {})
 
-    def test_uninstall_with_no_atrace_hooks_present(self, tmp_path: Path):
+    def test_uninstall_with_no_thirdeye_hooks_present(self, tmp_path: Path):
         settings_file = tmp_path / "settings.json"
         settings_file.write_text(
             json.dumps(

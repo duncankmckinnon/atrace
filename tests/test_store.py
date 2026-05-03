@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from atrace.config import Config
-from atrace.meta import SessionMeta
-from atrace.paths import session_dir, sessions_root
-from atrace.reader import SessionReader
-from atrace.store import Store
-from atrace.writer import SessionWriter
+from thirdeye.config import Config
+from thirdeye.meta import SessionMeta
+from thirdeye.paths import session_dir, sessions_root
+from thirdeye.reader import SessionReader
+from thirdeye.store import Store
+from thirdeye.writer import SessionWriter
 
 # -- open_session --------------------------------------------------------------
 

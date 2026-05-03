@@ -4,7 +4,7 @@ import json
 from collections.abc import Iterator
 from dataclasses import dataclass
 
-from atrace.store import Store
+from thirdeye.store import Store
 
 
 @dataclass(frozen=True)

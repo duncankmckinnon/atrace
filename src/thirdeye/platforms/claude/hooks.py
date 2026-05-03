@@ -4,8 +4,8 @@ import json
 import os
 import sys
 
-from atrace.config import Config
-from atrace.store import Store
+from thirdeye.config import Config
+from thirdeye.store import Store
 
 _PLATFORM = "claude"
 _ROUTING_KEYS = ("session_id",)

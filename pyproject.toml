@@ -1,5 +1,5 @@
 [project]
-name = "atrace"
+name = "thirdeye"
 dynamic = ["version"]
 description = "Trace any agentic CLI to a unified local store, queryable from the CLI."
 readme = "README.md"
@@ -27,21 +27,21 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/duncankmckinnon/atrace"
-Issues = "https://github.com/duncankmckinnon/atrace/issues"
+Homepage = "https://github.com/duncankmckinnon/thirdeye"
+Issues = "https://github.com/duncankmckinnon/thirdeye/issues"
 
 [project.scripts]
-atrace = "atrace.cli:main"
-atrace-claude-session-start = "atrace.platforms.claude.hooks:session_start"
-atrace-claude-user-prompt-submit = "atrace.platforms.claude.hooks:user_prompt_submit"
-atrace-claude-pre-tool-use = "atrace.platforms.claude.hooks:pre_tool_use"
-atrace-claude-post-tool-use = "atrace.platforms.claude.hooks:post_tool_use"
-atrace-claude-stop = "atrace.platforms.claude.hooks:stop"
-atrace-claude-subagent-stop = "atrace.platforms.claude.hooks:subagent_stop"
-atrace-claude-stop-failure = "atrace.platforms.claude.hooks:stop_failure"
-atrace-claude-notification = "atrace.platforms.claude.hooks:notification"
-atrace-claude-permission-request = "atrace.platforms.claude.hooks:permission_request"
-atrace-claude-session-end = "atrace.platforms.claude.hooks:session_end"
+thirdeye = "thirdeye.cli:main"
+thirdeye-claude-session-start = "thirdeye.platforms.claude.hooks:session_start"
+thirdeye-claude-user-prompt-submit = "thirdeye.platforms.claude.hooks:user_prompt_submit"
+thirdeye-claude-pre-tool-use = "thirdeye.platforms.claude.hooks:pre_tool_use"
+thirdeye-claude-post-tool-use = "thirdeye.platforms.claude.hooks:post_tool_use"
+thirdeye-claude-stop = "thirdeye.platforms.claude.hooks:stop"
+thirdeye-claude-subagent-stop = "thirdeye.platforms.claude.hooks:subagent_stop"
+thirdeye-claude-stop-failure = "thirdeye.platforms.claude.hooks:stop_failure"
+thirdeye-claude-notification = "thirdeye.platforms.claude.hooks:notification"
+thirdeye-claude-permission-request = "thirdeye.platforms.claude.hooks:permission_request"
+thirdeye-claude-session-end = "thirdeye.platforms.claude.hooks:session_end"
 
 [build-system]
 requires = ["setuptools>=64", "setuptools-scm>=8", "wheel"]
@@ -54,7 +54,7 @@ where = ["src"]
 "" = "src"
 
 [tool.setuptools_scm]
-version_file = "src/atrace/_version.py"
+version_file = "src/thirdeye/_version.py"
 fallback_version = "0.1.0.dev0"
 
 [project.optional-dependencies]
@@ -88,11 +88,11 @@ ignore = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov=atrace --cov-report=term-missing --cov-report=xml --cov-report=html"
+addopts = "--cov=thirdeye --cov-report=term-missing --cov-report=xml --cov-report=html"
 
 [tool.coverage.run]
-source = ["src/atrace"]
-omit = ["src/atrace/_version.py"]
+source = ["src/thirdeye"]
+omit = ["src/thirdeye/_version.py"]
 
 [tool.coverage.report]
 exclude_lines = [

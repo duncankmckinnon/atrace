@@ -11,37 +11,37 @@ ROOT = Path(__file__).resolve().parent.parent
 
 class TestPackageMetadata:
     def test_version_attribute(self):
-        import atrace
+        import thirdeye
 
         # version is derived from git tags via setuptools-scm; just check it's a non-empty
         # PEP 440-compatible string (e.g. "0.1.0" or "0.1.0.dev3+gabc1234")
-        assert isinstance(atrace.__version__, str)
-        assert atrace.__version__
-        assert atrace.__version__[0].isdigit()
+        assert isinstance(thirdeye.__version__, str)
+        assert thirdeye.__version__
+        assert thirdeye.__version__[0].isdigit()
 
     def test_installed_metadata_name(self):
-        meta = importlib.metadata.metadata("atrace")
-        assert meta["Name"] == "atrace"
+        meta = importlib.metadata.metadata("thirdeye")
+        assert meta["Name"] == "thirdeye"
 
     def test_installed_metadata_version(self):
-        meta = importlib.metadata.metadata("atrace")
+        meta = importlib.metadata.metadata("thirdeye")
         # tag-derived; just confirm it's set and starts with a digit
         assert meta["Version"]
         assert meta["Version"][0].isdigit()
 
     def test_requires_python(self):
-        meta = importlib.metadata.metadata("atrace")
+        meta = importlib.metadata.metadata("thirdeye")
         assert meta["Requires-Python"] == ">=3.10"
 
     def test_license(self):
-        meta = importlib.metadata.metadata("atrace")
+        meta = importlib.metadata.metadata("thirdeye")
         assert "MIT" in (meta.get("License") or meta.get("License-Expression") or "")
 
 
 class TestDependencies:
     @pytest.mark.parametrize("dep", ["click", "msgpack", "zstandard", "pyaml"])
     def test_runtime_dependency_declared(self, dep):
-        requires = importlib.metadata.requires("atrace") or []
+        requires = importlib.metadata.requires("thirdeye") or []
         dep_names = [
             r.split()[0].split(">")[0].split("<")[0].split("=")[0].split("!")[0].split(";")[0]
             for r in requires
@@ -76,15 +76,15 @@ class TestDependencies:
 
 class TestPackageLayout:
     def test_src_layout(self):
-        src_dir = ROOT / "src" / "atrace"
+        src_dir = ROOT / "src" / "thirdeye"
         assert src_dir.is_dir()
 
     def test_init_exists(self):
-        init = ROOT / "src" / "atrace" / "__init__.py"
+        init = ROOT / "src" / "thirdeye" / "__init__.py"
         assert init.is_file()
 
     def test_main_exists(self):
-        main = ROOT / "src" / "atrace" / "__main__.py"
+        main = ROOT / "src" / "thirdeye" / "__main__.py"
         assert main.is_file()
 
     def test_tests_init_exists(self):
@@ -100,12 +100,12 @@ class TestPackageLayout:
 
 class TestMainModule:
     def test_main_imports_from_cli(self):
-        main_path = ROOT / "src" / "atrace" / "__main__.py"
+        main_path = ROOT / "src" / "thirdeye" / "__main__.py"
         content = main_path.read_text()
-        assert "from atrace.cli import main" in content
+        assert "from thirdeye.cli import main" in content
 
     def test_main_has_name_guard(self):
-        main_path = ROOT / "src" / "atrace" / "__main__.py"
+        main_path = ROOT / "src" / "thirdeye" / "__main__.py"
         content = main_path.read_text()
         assert 'if __name__ == "__main__":' in content
 
@@ -113,9 +113,9 @@ class TestMainModule:
 class TestConsoleScript:
     def test_entrypoint_declared(self):
         eps = importlib.metadata.entry_points(group="console_scripts")
-        atrace_eps = [ep for ep in eps if ep.name == "atrace"]
-        assert len(atrace_eps) == 1
-        assert atrace_eps[0].value == "atrace.cli:main"
+        thirdeye_eps = [ep for ep in eps if ep.name == "thirdeye"]
+        assert len(thirdeye_eps) == 1
+        assert thirdeye_eps[0].value == "thirdeye.cli:main"
 
 
 class TestPyprojectContent:
@@ -145,4 +145,4 @@ class TestPyprojectContent:
         assert '"pytest>=8.0"' in self.content
 
     def test_console_script_target(self):
-        assert 'atrace = "atrace.cli:main"' in self.content
+        assert 'thirdeye = "thirdeye.cli:main"' in self.content

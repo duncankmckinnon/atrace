@@ -33,7 +33,7 @@ htmlcov/
 coverage.xml
 
 # setuptools-scm generated
-src/atrace/_version.py
+src/thirdeye/_version.py
 
 # PyInstaller
 #   Usually these files are written by a python script from a template

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from atrace.platforms.base import Platform
+from thirdeye.platforms.base import Platform
 
 
 class TestPlatformIsAbstract:

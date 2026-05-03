@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from atrace.codec import decode_event, encode_event
+from thirdeye.codec import decode_event, encode_event
 
 # -- zstd magic bytes for frame detection --
 ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"

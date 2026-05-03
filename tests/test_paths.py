@@ -1,8 +1,8 @@
-"""Tests for atrace.paths — pure path-layout helpers."""
+"""Tests for thirdeye.paths — pure path-layout helpers."""
 
 from pathlib import Path
 
-from atrace.paths import (
+from thirdeye.paths import (
     events_path,
     index_path,
     meta_path,
@@ -14,45 +14,45 @@ from atrace.paths import (
 
 class TestSessionsRoot:
     def test_appends_traces(self):
-        assert sessions_root(Path("/tmp/atrace")) == Path("/tmp/atrace/traces")
+        assert sessions_root(Path("/tmp/thirdeye")) == Path("/tmp/thirdeye/traces")
 
     def test_preserves_home_path(self):
-        home = Path("/home/user/.atrace")
+        home = Path("/home/user/.thirdeye")
         assert sessions_root(home) == home / "traces"
 
 
 class TestPlatformDir:
     def test_claude(self):
-        assert platform_dir(Path("/tmp/atrace"), "claude") == Path("/tmp/atrace/traces/claude")
+        assert platform_dir(Path("/tmp/thirdeye"), "claude") == Path("/tmp/thirdeye/traces/claude")
 
     def test_cursor(self):
-        assert platform_dir(Path("/tmp/atrace"), "cursor") == Path("/tmp/atrace/traces/cursor")
+        assert platform_dir(Path("/tmp/thirdeye"), "cursor") == Path("/tmp/thirdeye/traces/cursor")
 
     def test_nested_under_sessions_root(self):
-        home = Path("/tmp/atrace")
+        home = Path("/tmp/thirdeye")
         assert platform_dir(home, "gemini") == sessions_root(home) / "gemini"
 
 
 class TestSessionDir:
     def test_basic(self):
-        assert session_dir(Path("/tmp/atrace"), "claude", "01J9G7") == Path(
-            "/tmp/atrace/traces/claude/01J9G7"
+        assert session_dir(Path("/tmp/thirdeye"), "claude", "01J9G7") == Path(
+            "/tmp/thirdeye/traces/claude/01J9G7"
         )
 
     def test_full_ulid(self):
         ulid = "01J9G7XK4PABCDEFGHJKMNPQRS"
-        result = session_dir(Path("/tmp/atrace"), "codex", ulid)
-        assert result == Path(f"/tmp/atrace/traces/codex/{ulid}")
+        result = session_dir(Path("/tmp/thirdeye"), "codex", ulid)
+        assert result == Path(f"/tmp/thirdeye/traces/codex/{ulid}")
 
     def test_nested_under_platform_dir(self):
-        home = Path("/tmp/atrace")
+        home = Path("/tmp/thirdeye")
         sid = "01J9G7XK4P"
         assert session_dir(home, "claude", sid) == (platform_dir(home, "claude") / sid)
 
 
 class TestEventFiles:
     def setup_method(self):
-        self.sd = Path("/tmp/atrace/traces/claude/01J9G7")
+        self.sd = Path("/tmp/thirdeye/traces/claude/01J9G7")
 
     def test_events_path(self):
         assert events_path(self.sd) == self.sd / "events.alog"

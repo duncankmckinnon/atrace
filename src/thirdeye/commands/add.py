@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import click
 
-from atrace.platforms.base import Platform
-from atrace.platforms.claude.install import ClaudePlatform
+from thirdeye.platforms.base import Platform
+from thirdeye.platforms.claude.install import ClaudePlatform
 
 PLATFORMS: dict[str, type[Platform]] = {
     "claude": ClaudePlatform,

@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from atrace.codec import encode_event
-from atrace.index import IndexWriter
-from atrace.paths import events_path, index_path
-from atrace.reader import SessionReader
-from atrace.writer import SessionWriter
+from thirdeye.codec import encode_event
+from thirdeye.index import IndexWriter
+from thirdeye.paths import events_path, index_path
+from thirdeye.reader import SessionReader
+from thirdeye.writer import SessionWriter
 
 # -- helpers -------------------------------------------------------------------
 
