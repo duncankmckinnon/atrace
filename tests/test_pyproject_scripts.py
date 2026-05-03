@@ -45,7 +45,10 @@ class TestPyprojectScriptEntries:
     def test_original_thirdeye_script_preserved(self):
         assert 'thirdeye = "thirdeye.cli:main"' in self.content
 
-    def test_exactly_eleven_scripts(self):
+    def test_thrdi_alias_present(self):
+        assert 'thrdi = "thirdeye.cli:main"' in self.content
+
+    def test_exactly_twelve_scripts(self):
         in_scripts = False
         count = 0
         for line in self.content.splitlines():
@@ -58,7 +61,9 @@ class TestPyprojectScriptEntries:
                     break
                 if "=" in stripped and stripped and not stripped.startswith("#"):
                     count += 1
-        assert count == 11, f"Expected 11 script entries (1 thirdeye + 10 hooks), got {count}"
+        assert (
+            count == 12
+        ), f"Expected 12 script entries (thirdeye + thrdi alias + 10 hooks), got {count}"
 
 
 class TestConsoleScriptsRegistered:
