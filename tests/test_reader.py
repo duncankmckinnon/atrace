@@ -10,7 +10,6 @@ from atrace.paths import events_path, index_path
 from atrace.reader import SessionReader
 from atrace.writer import SessionWriter
 
-
 # -- helpers -------------------------------------------------------------------
 
 
@@ -23,9 +22,7 @@ def _make_session(tmp_path: Path, events: list[tuple[str, object]]) -> Path:
     return sd
 
 
-def _make_session_manual(
-    tmp_path: Path, events: list[dict], *, subdir: str = "session"
-) -> Path:
+def _make_session_manual(tmp_path: Path, events: list[dict], *, subdir: str = "session") -> Path:
     """Build a session dir by hand using codec + index, no SessionWriter needed."""
     sd = tmp_path / subdir
     sd.mkdir(parents=True, exist_ok=True)

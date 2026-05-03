@@ -4,7 +4,6 @@ import pytest
 
 from atrace.codec import decode_event, encode_event
 
-
 # -- zstd magic bytes for frame detection --
 ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
 
@@ -104,6 +103,7 @@ class TestEncodeReturnType:
         event = {"t": "verbose", "ts": "now", "seq": 0, "data": "a" * 1000}
         frame = encode_event(event)
         import msgpack
+
         raw = msgpack.packb(event, use_bin_type=True)
         assert len(frame) < len(raw)
 
@@ -124,6 +124,7 @@ class TestDecodeErrors:
 
     def test_decode_valid_zstd_but_invalid_msgpack_raises(self):
         import zstandard as zstd
+
         compressor = zstd.ZstdCompressor()
         bad_frame = compressor.compress(b"\xc1")  # 0xc1 is never-used msgpack byte
         with pytest.raises(Exception):

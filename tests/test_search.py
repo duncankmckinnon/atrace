@@ -2,12 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from atrace.config import Config
-from atrace.search import Hit, search, _snippet, _stringify
+from atrace.search import Hit, _snippet, _stringify, search
 from atrace.store import Store
-
 
 # -- search: basic matching ----------------------------------------------------
 

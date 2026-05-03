@@ -45,9 +45,7 @@ class ClaudePlatform(Platform):
             cmd = _resolve_command(script)
             entries = hooks.setdefault(event, [])
             already = any(
-                h.get("command") == cmd
-                for entry in entries
-                for h in entry.get("hooks", [])
+                h.get("command") == cmd for entry in entries for h in entry.get("hooks", [])
             )
             if not already:
                 entries.append({"hooks": [{"type": "command", "command": cmd}]})
@@ -64,10 +62,10 @@ class ClaudePlatform(Platform):
         for event in list(hooks.keys()):
             entries = hooks[event]
             filtered = [
-                entry for entry in entries
+                entry
+                for entry in entries
                 if not all(
-                    Path(h.get("command", "")).name in our_scripts
-                    for h in entry.get("hooks", [])
+                    Path(h.get("command", "")).name in our_scripts for h in entry.get("hooks", [])
                 )
             ]
             if filtered:

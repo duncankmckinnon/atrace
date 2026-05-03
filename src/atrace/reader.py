@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Any, Iterable, Iterator
+from typing import Any
 
 import zstandard as zstd
 
@@ -22,8 +23,7 @@ class SessionReader:
             raise IndexError(f"seq {seq} out of range")
         offset = self._idx.get(seq)
         next_offset = (
-            self._idx.get(seq + 1) if seq + 1 < self._idx.count()
-            else self._events.stat().st_size
+            self._idx.get(seq + 1) if seq + 1 < self._idx.count() else self._events.stat().st_size
         )
         with open(self._events, "rb") as f:
             f.seek(offset)

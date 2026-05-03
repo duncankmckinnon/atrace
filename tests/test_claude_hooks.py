@@ -42,6 +42,7 @@ class TestReadStdin:
         class BrokenStdin:
             def read(self):
                 raise OSError("broken pipe")
+
         monkeypatch.setattr("sys.stdin", BrokenStdin())
         assert hooks._read_stdin() == {}
 
@@ -168,11 +169,16 @@ class TestPreToolUse:
     def test_appends_tool_call(self, monkeypatch, env: Path):
         _stdin(monkeypatch, {"session_id": "abc", "cwd": "/p"})
         hooks.session_start()
-        _stdin(monkeypatch, {
-            "session_id": "abc", "cwd": "/p",
-            "tool_name": "Read", "tool_use_id": "tu_1",
-            "tool_input": {"file_path": "x.py"},
-        })
+        _stdin(
+            monkeypatch,
+            {
+                "session_id": "abc",
+                "cwd": "/p",
+                "tool_name": "Read",
+                "tool_use_id": "tu_1",
+                "tool_input": {"file_path": "x.py"},
+            },
+        )
         hooks.pre_tool_use()
         events = list(Store(Config.load()).reader("abc").iter_events())
         assert events[1]["t"] == "tool_call"
@@ -188,11 +194,16 @@ class TestPostToolUse:
     def test_appends_tool_result(self, monkeypatch, env: Path):
         _stdin(monkeypatch, {"session_id": "abc", "cwd": "/p"})
         hooks.session_start()
-        _stdin(monkeypatch, {
-            "session_id": "abc", "cwd": "/p",
-            "tool_name": "Read", "tool_use_id": "tu_1",
-            "tool_response": "<file contents>",
-        })
+        _stdin(
+            monkeypatch,
+            {
+                "session_id": "abc",
+                "cwd": "/p",
+                "tool_name": "Read",
+                "tool_use_id": "tu_1",
+                "tool_response": "<file contents>",
+            },
+        )
         hooks.post_tool_use()
         events = list(Store(Config.load()).reader("abc").iter_events())
         assert events[1]["t"] == "tool_result"
@@ -262,10 +273,15 @@ class TestPermissionRequest:
     def test_appends_permission_request(self, monkeypatch, env: Path):
         _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
         hooks.session_start()
-        _stdin(monkeypatch, {
-            "session_id": "s1", "cwd": "/p",
-            "tool_name": "Bash", "command": "rm -rf /",
-        })
+        _stdin(
+            monkeypatch,
+            {
+                "session_id": "s1",
+                "cwd": "/p",
+                "tool_name": "Bash",
+                "command": "rm -rf /",
+            },
+        )
         hooks.permission_request()
         events = list(Store(Config.load()).reader("s1").iter_events())
         assert events[1]["t"] == "permission_request"
@@ -326,6 +342,7 @@ class TestSilentNoop:
         class BrokenStdin:
             def read(self):
                 raise OSError("broken pipe")
+
         monkeypatch.setattr("sys.stdin", BrokenStdin())
         hooks.pre_tool_use()
         assert list(Store(Config.load()).list_sessions()) == []
@@ -440,7 +457,8 @@ class TestMultipleSessions:
 class TestPayloadPreservation:
     def test_nested_dict_preserved(self, monkeypatch, env: Path):
         payload = {
-            "session_id": "s1", "cwd": "/p",
+            "session_id": "s1",
+            "cwd": "/p",
             "tool_input": {"nested": {"deep": True, "list": [1, 2, 3]}},
         }
         _stdin(monkeypatch, payload)
@@ -457,7 +475,8 @@ class TestPayloadPreservation:
 
     def test_payload_with_special_chars(self, monkeypatch, env: Path):
         payload = {
-            "session_id": "s1", "cwd": "/p",
+            "session_id": "s1",
+            "cwd": "/p",
             "text": "line1\nline2\ttab\r\nwindows",
         }
         _stdin(monkeypatch, payload)

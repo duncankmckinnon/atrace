@@ -46,7 +46,7 @@ class SessionWriter:
         platform: str,
         cwd: str,
         extra: dict[str, Any] | None = None,
-    ) -> "SessionWriter":
+    ) -> SessionWriter:
         session_dir.mkdir(parents=True, exist_ok=True)
         existing = read_meta(meta_path(session_dir))
         if existing is None:
@@ -106,7 +106,7 @@ class SessionWriter:
         self._meta.last_seq = self._next_seq - 1 if self._next_seq > 0 else -1
         write_meta(self._meta_path, self._meta)
 
-    def __enter__(self) -> "SessionWriter":
+    def __enter__(self) -> SessionWriter:
         return self
 
     def __exit__(self, *exc: object) -> None:

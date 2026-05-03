@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from atrace.platforms.claude.constants import HOOK_EVENTS
 from atrace.platforms.claude.install import ClaudePlatform
 
@@ -58,11 +56,7 @@ class TestInstallFreshFile:
         ClaudePlatform(settings_file=settings_file).install()
         settings = json.loads(settings_file.read_text())
         for event, script in HOOK_EVENTS.items():
-            cmds = [
-                h["command"]
-                for entry in settings["hooks"][event]
-                for h in entry["hooks"]
-            ]
+            cmds = [h["command"] for entry in settings["hooks"][event] for h in entry["hooks"]]
             assert any(script in c for c in cmds), f"{script} not in commands for {event}"
 
     def test_output_is_valid_json(self, tmp_path: Path):
@@ -119,40 +113,38 @@ class TestInstallPreservesExisting:
 
     def test_preserves_unrelated_hooks(self, tmp_path: Path):
         settings_file = tmp_path / "settings.json"
-        settings_file.write_text(json.dumps({
-            "hooks": {
-                "SessionStart": [
-                    {"hooks": [{"type": "command", "command": "/some/other/tool"}]}
-                ]
-            }
-        }))
+        settings_file.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionStart": [
+                            {"hooks": [{"type": "command", "command": "/some/other/tool"}]}
+                        ]
+                    }
+                }
+            )
+        )
         ClaudePlatform(settings_file=settings_file).install()
         settings = json.loads(settings_file.read_text())
-        cmds = [
-            h["command"]
-            for entry in settings["hooks"]["SessionStart"]
-            for h in entry["hooks"]
-        ]
+        cmds = [h["command"] for entry in settings["hooks"]["SessionStart"] for h in entry["hooks"]]
         assert "/some/other/tool" in cmds
         assert any("atrace-claude-session-start" in c for c in cmds)
 
     def test_preserves_hooks_for_unknown_events(self, tmp_path: Path):
         settings_file = tmp_path / "settings.json"
-        settings_file.write_text(json.dumps({
-            "hooks": {
-                "CustomEvent": [
-                    {"hooks": [{"type": "command", "command": "/custom/hook"}]}
-                ]
-            }
-        }))
+        settings_file.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "CustomEvent": [{"hooks": [{"type": "command", "command": "/custom/hook"}]}]
+                    }
+                }
+            )
+        )
         ClaudePlatform(settings_file=settings_file).install()
         settings = json.loads(settings_file.read_text())
         assert "CustomEvent" in settings["hooks"]
-        cmds = [
-            h["command"]
-            for entry in settings["hooks"]["CustomEvent"]
-            for h in entry["hooks"]
-        ]
+        cmds = [h["command"] for entry in settings["hooks"]["CustomEvent"] for h in entry["hooks"]]
         assert "/custom/hook" in cmds
 
 
@@ -180,9 +172,7 @@ class TestInstallEdgeCases:
 
     def test_handles_empty_event_list(self, tmp_path: Path):
         settings_file = tmp_path / "settings.json"
-        settings_file.write_text(json.dumps({
-            "hooks": {"SessionStart": []}
-        }))
+        settings_file.write_text(json.dumps({"hooks": {"SessionStart": []}}))
         ClaudePlatform(settings_file=settings_file).install()
         settings = json.loads(settings_file.read_text())
         assert len(settings["hooks"]["SessionStart"]) == 1
@@ -207,22 +197,22 @@ class TestUninstallRemovesHooks:
 
     def test_removes_only_our_hooks(self, tmp_path: Path):
         settings_file = tmp_path / "settings.json"
-        settings_file.write_text(json.dumps({
-            "hooks": {
-                "SessionStart": [
-                    {"hooks": [{"type": "command", "command": "/some/other/tool"}]}
-                ]
-            }
-        }))
+        settings_file.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionStart": [
+                            {"hooks": [{"type": "command", "command": "/some/other/tool"}]}
+                        ]
+                    }
+                }
+            )
+        )
         p = ClaudePlatform(settings_file=settings_file)
         p.install()
         p.uninstall()
         settings = json.loads(settings_file.read_text())
-        cmds = [
-            h["command"]
-            for entry in settings["hooks"]["SessionStart"]
-            for h in entry["hooks"]
-        ]
+        cmds = [h["command"] for entry in settings["hooks"]["SessionStart"] for h in entry["hooks"]]
         assert "/some/other/tool" in cmds
         assert not any("atrace-claude-session-start" in c for c in cmds)
 
@@ -237,23 +227,21 @@ class TestUninstallRemovesHooks:
 
     def test_preserves_hooks_for_unknown_events_on_uninstall(self, tmp_path: Path):
         settings_file = tmp_path / "settings.json"
-        settings_file.write_text(json.dumps({
-            "hooks": {
-                "CustomEvent": [
-                    {"hooks": [{"type": "command", "command": "/custom/hook"}]}
-                ]
-            }
-        }))
+        settings_file.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "CustomEvent": [{"hooks": [{"type": "command", "command": "/custom/hook"}]}]
+                    }
+                }
+            )
+        )
         p = ClaudePlatform(settings_file=settings_file)
         p.install()
         p.uninstall()
         settings = json.loads(settings_file.read_text())
         assert "CustomEvent" in settings["hooks"]
-        cmds = [
-            h["command"]
-            for entry in settings["hooks"]["CustomEvent"]
-            for h in entry["hooks"]
-        ]
+        cmds = [h["command"] for entry in settings["hooks"]["CustomEvent"] for h in entry["hooks"]]
         assert "/custom/hook" in cmds
 
 
@@ -329,17 +317,15 @@ class TestHookEntryStructure:
 class TestResolveCommandAbsolutePath:
     def test_install_uses_absolute_path_when_which_resolves(self, tmp_path: Path, monkeypatch):
         settings_file = tmp_path / "settings.json"
+
         def fake_which(name):
             return f"/usr/local/bin/{name}"
+
         monkeypatch.setattr("atrace.platforms.claude.install.shutil.which", fake_which)
         ClaudePlatform(settings_file=settings_file).install()
         settings = json.loads(settings_file.read_text())
         for event, script in HOOK_EVENTS.items():
-            cmds = [
-                h["command"]
-                for entry in settings["hooks"][event]
-                for h in entry["hooks"]
-            ]
+            cmds = [h["command"] for entry in settings["hooks"][event] for h in entry["hooks"]]
             assert cmds == [f"/usr/local/bin/{script}"]
 
     def test_install_falls_back_to_bare_name_when_which_fails(self, tmp_path: Path, monkeypatch):
@@ -348,17 +334,15 @@ class TestResolveCommandAbsolutePath:
         ClaudePlatform(settings_file=settings_file).install()
         settings = json.loads(settings_file.read_text())
         for event, script in HOOK_EVENTS.items():
-            cmds = [
-                h["command"]
-                for entry in settings["hooks"][event]
-                for h in entry["hooks"]
-            ]
+            cmds = [h["command"] for entry in settings["hooks"][event] for h in entry["hooks"]]
             assert cmds == [script]
 
     def test_uninstall_removes_absolute_path_hooks(self, tmp_path: Path, monkeypatch):
         settings_file = tmp_path / "settings.json"
+
         def fake_which(name):
             return f"/usr/local/bin/{name}"
+
         monkeypatch.setattr("atrace.platforms.claude.install.shutil.which", fake_which)
         p = ClaudePlatform(settings_file=settings_file)
         p.install()
@@ -368,8 +352,10 @@ class TestResolveCommandAbsolutePath:
 
     def test_idempotent_with_absolute_paths(self, tmp_path: Path, monkeypatch):
         settings_file = tmp_path / "settings.json"
+
         def fake_which(name):
             return f"/opt/bin/{name}"
+
         monkeypatch.setattr("atrace.platforms.claude.install.shutil.which", fake_which)
         p = ClaudePlatform(settings_file=settings_file)
         p.install()
@@ -385,24 +371,26 @@ class TestUninstallMixedEntries:
         because not ALL hooks in the entry are ours."""
         monkeypatch.setattr("atrace.platforms.claude.install.shutil.which", lambda _: None)
         settings_file = tmp_path / "settings.json"
-        settings_file.write_text(json.dumps({
-            "hooks": {
-                "SessionStart": [
-                    {"hooks": [
-                        {"type": "command", "command": "atrace-claude-session-start"},
-                        {"type": "command", "command": "/foreign/tool"},
-                    ]}
-                ]
-            }
-        }))
+        settings_file.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionStart": [
+                            {
+                                "hooks": [
+                                    {"type": "command", "command": "atrace-claude-session-start"},
+                                    {"type": "command", "command": "/foreign/tool"},
+                                ]
+                            }
+                        ]
+                    }
+                }
+            )
+        )
         ClaudePlatform(settings_file=settings_file).uninstall()
         settings = json.loads(settings_file.read_text())
         assert "SessionStart" in settings["hooks"]
-        cmds = [
-            h["command"]
-            for entry in settings["hooks"]["SessionStart"]
-            for h in entry["hooks"]
-        ]
+        cmds = [h["command"] for entry in settings["hooks"]["SessionStart"] for h in entry["hooks"]]
         assert "atrace-claude-session-start" in cmds
         assert "/foreign/tool" in cmds
 
@@ -410,13 +398,17 @@ class TestUninstallMixedEntries:
         """An entry with an empty hooks list: all() on empty is True, so this
         entry would be removed. Verify the behavior."""
         settings_file = tmp_path / "settings.json"
-        settings_file.write_text(json.dumps({
-            "hooks": {
-                "SessionStart": [
-                    {"hooks": []},
-                ]
-            }
-        }))
+        settings_file.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionStart": [
+                            {"hooks": []},
+                        ]
+                    }
+                }
+            )
+        )
         ClaudePlatform(settings_file=settings_file).uninstall()
         settings = json.loads(settings_file.read_text())
         # all() on empty iterable is True, so the entry IS removed
@@ -424,17 +416,17 @@ class TestUninstallMixedEntries:
 
     def test_uninstall_with_no_atrace_hooks_present(self, tmp_path: Path):
         settings_file = tmp_path / "settings.json"
-        settings_file.write_text(json.dumps({
-            "hooks": {
-                "SessionStart": [
-                    {"hooks": [{"type": "command", "command": "/other/tool"}]}
-                ]
-            }
-        }))
+        settings_file.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionStart": [{"hooks": [{"type": "command", "command": "/other/tool"}]}]
+                    }
+                }
+            )
+        )
         ClaudePlatform(settings_file=settings_file).uninstall()
         settings = json.loads(settings_file.read_text())
         assert "/other/tool" in [
-            h["command"]
-            for entry in settings["hooks"]["SessionStart"]
-            for h in entry["hooks"]
+            h["command"] for entry in settings["hooks"]["SessionStart"] for h in entry["hooks"]
         ]

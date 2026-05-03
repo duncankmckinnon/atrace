@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator
 
 from atrace.store import Store
 
