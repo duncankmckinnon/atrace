@@ -5,11 +5,11 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-from atrace.cli import main
+from thirdeye.cli import main
 
 
 def _runner_with_home(tmp_path: Path) -> tuple[CliRunner, dict]:
-    return CliRunner(), {"ATRACE_HOME": str(tmp_path)}
+    return CliRunner(), {"THIRDEYE_HOME": str(tmp_path)}
 
 
 # -- help / version -----------------------------------------------------------
@@ -19,7 +19,7 @@ def test_help(tmp_path: Path):
     runner, env = _runner_with_home(tmp_path)
     r = runner.invoke(main, ["--help"], env=env)
     assert r.exit_code == 0
-    assert "atrace" in r.output.lower()
+    assert "thirdeye" in r.output.lower()
 
 
 def test_ingest_help(tmp_path: Path):
@@ -291,8 +291,8 @@ def test_ingest_events_readable(tmp_path: Path):
     )
     assert r.exit_code == 0
 
-    from atrace.config import Config
-    from atrace.store import Store
+    from thirdeye.config import Config
+    from thirdeye.store import Store
 
     store = Store(Config(root=tmp_path))
     reader = store.reader("READ1")
@@ -366,8 +366,8 @@ def test_ingest_default_t_value_readable(tmp_path: Path):
     )
     assert r.exit_code == 0
 
-    from atrace.config import Config
-    from atrace.store import Store
+    from thirdeye.config import Config
+    from thirdeye.store import Store
 
     store = Store(Config(root=tmp_path))
     reader = store.reader("TROUND")
@@ -389,8 +389,8 @@ def test_ingest_data_none_roundtrip(tmp_path: Path):
     )
     assert r.exit_code == 0
 
-    from atrace.config import Config
-    from atrace.store import Store
+    from thirdeye.config import Config
+    from thirdeye.store import Store
 
     store = Store(Config(root=tmp_path))
     reader = store.reader("DROUND")
@@ -438,8 +438,8 @@ def test_ingest_complex_data(tmp_path: Path):
     )
     assert r.exit_code == 0
 
-    from atrace.config import Config
-    from atrace.store import Store
+    from thirdeye.config import Config
+    from thirdeye.store import Store
 
     store = Store(Config(root=tmp_path))
     reader = store.reader("CPLX1")

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from atrace.search import Hit, _snippet, _stringify, search
-from atrace.store import Store
+from thirdeye.search import Hit, _snippet, _stringify, search
+from thirdeye.store import Store
 
 # -- search: basic matching ----------------------------------------------------
 

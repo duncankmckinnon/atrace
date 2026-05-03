@@ -7,16 +7,16 @@ from pathlib import Path
 
 def _env(tmp_path: Path) -> dict[str, str]:
     env = os.environ.copy()
-    env["ATRACE_HOME"] = str(tmp_path)
+    env["THIRDEYE_HOME"] = str(tmp_path)
     return env
 
 
 def _run(args: list[str], env: dict[str, str], **kw) -> subprocess.CompletedProcess:
-    return subprocess.run([sys.executable, "-m", "atrace"] + args, env=env, **kw)
+    return subprocess.run([sys.executable, "-m", "thirdeye"] + args, env=env, **kw)
 
 
 def _output(args: list[str], env: dict[str, str]) -> str:
-    return subprocess.check_output([sys.executable, "-m", "atrace"] + args, env=env, text=True)
+    return subprocess.check_output([sys.executable, "-m", "thirdeye"] + args, env=env, text=True)
 
 
 def _ingest(env: dict[str, str], platform: str, sid: str, cwd: str, events: list[dict]) -> None:

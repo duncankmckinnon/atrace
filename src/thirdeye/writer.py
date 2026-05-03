@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from atrace.codec import encode_event
-from atrace.index import IndexReader, IndexWriter, rebuild_index
-from atrace.meta import SessionMeta, read_meta, write_meta
-from atrace.paths import events_path, index_path, meta_path
+from thirdeye.codec import encode_event
+from thirdeye.index import IndexReader, IndexWriter, rebuild_index
+from thirdeye.meta import SessionMeta, read_meta, write_meta
+from thirdeye.paths import events_path, index_path, meta_path
 
 
 def _utc_iso_ms() -> str:

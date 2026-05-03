@@ -4,8 +4,8 @@ import json
 import shutil
 from pathlib import Path
 
-from atrace.platforms.base import Platform
-from atrace.platforms.claude.constants import (
+from thirdeye.platforms.base import Platform
+from thirdeye.platforms.claude.constants import (
     DISPLAY_NAME,
     HOOK_EVENTS,
     PLATFORM_NAME,

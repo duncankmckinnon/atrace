@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from atrace.ids import new_ulid, resolve_prefix
+from thirdeye.ids import new_ulid, resolve_prefix
 
 
 def test_new_ulid_is_26_crockford_chars():

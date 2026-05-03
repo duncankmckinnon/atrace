@@ -5,10 +5,10 @@ from dataclasses import asdict
 
 import click
 
-from atrace.config import Config
-from atrace.render import render_event_jsonl, render_event_terse, render_event_tree
-from atrace.search import search as search_fn
-from atrace.store import Store
+from thirdeye.config import Config
+from thirdeye.render import render_event_jsonl, render_event_terse, render_event_tree
+from thirdeye.search import search as search_fn
+from thirdeye.store import Store
 
 
 def _store() -> Store:

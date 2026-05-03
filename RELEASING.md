@@ -1,4 +1,4 @@
-# Releasing atrace
+# Releasing thirdeye
 
 Versions are derived from git tags via `setuptools-scm`. Tagging a commit triggers a CI build and a PyPI publish via OIDC trusted publishing.
 
@@ -6,11 +6,11 @@ Versions are derived from git tags via `setuptools-scm`. Tagging a commit trigge
 
 These must be done once before the first release.
 
-1. **Reserve the package name on PyPI.** Sign in at https://pypi.org and confirm `atrace` (or your chosen distribution name) is available. If it's taken, change `name` in `pyproject.toml` to a free alternative (the console script `atrace` stays the same).
+1. **Reserve the package name on PyPI.** Sign in at https://pypi.org and confirm `thirdeye` (or your chosen distribution name) is available. If it's taken, change `name` in `pyproject.toml` to a free alternative (the console script `thirdeye` stays the same).
 2. **Configure trusted publishing on PyPI.** Go to https://pypi.org/manage/account/publishing/ → "Add a new pending publisher" with:
-   - PyPI Project Name: `atrace`
+   - PyPI Project Name: `thirdeye`
    - Owner: `duncankmckinnon`
-   - Repository: `atrace`
+   - Repository: `thirdeye`
    - Workflow filename: `release.yml`
    - Environment name: `pypi`
 3. **Create the `pypi` environment in GitHub.** Repo settings → Environments → New environment named `pypi`. Optionally add a required reviewer for an extra confirmation gate before publish.
@@ -33,7 +33,7 @@ GitHub Actions runs the `release` workflow:
 2. Runs the test suite against the built code
 3. Publishes to PyPI via OIDC
 
-After ~2 minutes the release is live. `pipx install atrace` (or `uv tool install atrace`) installs it.
+After ~2 minutes the release is live. `pipx install thirdeye` (or `uv tool install thirdeye`) installs it.
 
 ## Pre-releases
 
@@ -43,7 +43,7 @@ Use PEP 440-style suffixed tags:
 - `v0.2.0b1` — beta
 - `v0.2.0rc1` — release candidate
 
-PyPI accepts these. `pipx install --pip-args '--pre' atrace` will pick them up; otherwise stable releases are preferred.
+PyPI accepts these. `pipx install --pip-args '--pre' thirdeye` will pick them up; otherwise stable releases are preferred.
 
 ## Local development version
 
@@ -52,7 +52,7 @@ Without any tag the package version resolves to `0.1.0.dev0` (set as `fallback_v
 ## Manual build (no publish)
 
 ```bash
-uv build              # produces dist/atrace-*.tar.gz and dist/atrace-*.whl
+uv build              # produces dist/thirdeye-*.tar.gz and dist/thirdeye-*.whl
 ```
 
 This runs locally for inspection without going to PyPI.

@@ -1,4 +1,4 @@
-"""Tests for atrace.meta: SessionMeta dataclass and atomic YAML read/write."""
+"""Tests for thirdeye.meta: SessionMeta dataclass and atomic YAML read/write."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from atrace.meta import SCHEMA_VERSION, SessionMeta, read_meta, write_meta
+from thirdeye.meta import SCHEMA_VERSION, SessionMeta, read_meta, write_meta
 
 
 def _sample(**over) -> SessionMeta:

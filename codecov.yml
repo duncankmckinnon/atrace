@@ -12,7 +12,7 @@ coverage:
 
   ignore:
     - "tests/**"
-    - "src/atrace/_version.py"
+    - "src/thirdeye/_version.py"
     - ".workbench/**"
 
 comment:

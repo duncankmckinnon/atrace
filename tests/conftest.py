@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from atrace.config import Config
-from atrace.store import Store
+from thirdeye.config import Config
+from thirdeye.store import Store
 
 
 @pytest.fixture

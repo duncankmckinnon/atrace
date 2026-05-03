@@ -3,19 +3,19 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Any
 
-from atrace.config import Config
-from atrace.meta import SessionMeta, read_meta, write_meta
-from atrace.paths import (
+from thirdeye.config import Config
+from thirdeye.meta import SessionMeta, read_meta, write_meta
+from thirdeye.paths import (
     events_path,
     meta_path,
     platform_dir,
     sessions_root,
 )
-from atrace.paths import (
+from thirdeye.paths import (
     session_dir as _session_dir,
 )
-from atrace.reader import SessionReader
-from atrace.writer import SessionWriter, utc_iso_ms
+from thirdeye.reader import SessionReader
+from thirdeye.writer import SessionWriter, utc_iso_ms
 
 
 class Store:

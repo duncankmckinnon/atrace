@@ -106,8 +106,8 @@ jobs:
             ## Install
 
             ```bash
-            pipx install atrace
-            # or: uv tool install atrace
+            pipx install thirdeye
+            # or: uv tool install thirdeye
             ```
           files: dist/*
           generate_release_notes: false

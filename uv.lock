@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.10"
 
 [[package]]
-name = "atrace"
+name = "thirdeye"
 source = { editable = "." }
 dependencies = [
     { name = "click" },

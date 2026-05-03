@@ -6,10 +6,10 @@ from pathlib import Path
 
 
 def default_root() -> Path:
-    env = os.environ.get("ATRACE_HOME")
+    env = os.environ.get("THIRDEYE_HOME")
     if env:
         return Path(env).expanduser()
-    return Path.home() / ".atrace"
+    return Path.home() / ".thirdeye"
 
 
 @dataclass(frozen=True)

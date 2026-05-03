@@ -6,14 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from atrace.config import Config
-from atrace.platforms.claude import hooks
-from atrace.store import Store
+from thirdeye.config import Config
+from thirdeye.platforms.claude import hooks
+from thirdeye.store import Store
 
 
 @pytest.fixture
 def env(monkeypatch, tmp_path: Path):
-    monkeypatch.setenv("ATRACE_HOME", str(tmp_path))
+    monkeypatch.setenv("THIRDEYE_HOME", str(tmp_path))
     return tmp_path
 
 

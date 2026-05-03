@@ -1,10 +1,10 @@
-"""Tests for atrace.render — terse, jsonl, and tree event renderers."""
+"""Tests for thirdeye.render — terse, jsonl, and tree event renderers."""
 
 from __future__ import annotations
 
 import json
 
-from atrace.render import render_event_jsonl, render_event_terse, render_event_tree
+from thirdeye.render import render_event_jsonl, render_event_terse, render_event_tree
 
 # -- helpers ------------------------------------------------------------------
 
@@ -272,26 +272,26 @@ class TestIsFlatObject:
     """Test the internal helper to ensure correct flat/nested classification."""
 
     def test_flat_all_scalars(self):
-        from atrace.render import _is_flat_object
+        from thirdeye.render import _is_flat_object
 
         assert _is_flat_object({"a": 1, "b": "x", "c": True}) is True
 
     def test_not_flat_nested_dict(self):
-        from atrace.render import _is_flat_object
+        from thirdeye.render import _is_flat_object
 
         assert _is_flat_object({"a": {"b": 1}}) is False
 
     def test_not_flat_nested_list(self):
-        from atrace.render import _is_flat_object
+        from thirdeye.render import _is_flat_object
 
         assert _is_flat_object({"a": [1, 2]}) is False
 
     def test_empty_dict_is_flat(self):
-        from atrace.render import _is_flat_object
+        from thirdeye.render import _is_flat_object
 
         assert _is_flat_object({}) is True
 
     def test_none_value_is_flat(self):
-        from atrace.render import _is_flat_object
+        from thirdeye.render import _is_flat_object
 
         assert _is_flat_object({"a": None}) is True

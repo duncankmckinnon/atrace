@@ -5,9 +5,9 @@ import sys
 
 import click
 
-from atrace.config import Config
-from atrace.ids import new_ulid
-from atrace.store import Store
+from thirdeye.config import Config
+from thirdeye.ids import new_ulid
+from thirdeye.store import Store
 
 
 @click.command(help="Read newline-delimited JSON events from stdin and append them to a session.")

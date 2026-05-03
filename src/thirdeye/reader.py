@@ -6,9 +6,9 @@ from typing import Any
 
 import zstandard as zstd
 
-from atrace.codec import decode_event
-from atrace.index import IndexReader
-from atrace.paths import events_path, index_path
+from thirdeye.codec import decode_event
+from thirdeye.index import IndexReader
+from thirdeye.paths import events_path, index_path
 
 
 class SessionReader:
