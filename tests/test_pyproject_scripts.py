@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.metadata
+import shutil
 from pathlib import Path
 
 import pytest
@@ -134,21 +135,11 @@ class TestEntryPointFunctionsCallable:
 
 
 class TestScriptBinaryExists:
-    """Verify script binaries are installed in the virtualenv."""
-
-    def _venv_bin(self) -> Path:
-        venv = ROOT / ".venv"
-        bin_dir = venv / "bin"
-        if not bin_dir.exists():
-            bin_dir = venv / "Scripts"
-        return bin_dir
+    """Verify script binaries are installed and resolvable on PATH."""
 
     @pytest.mark.parametrize("script_name", list(EXPECTED_SCRIPTS.keys()))
     def test_script_binary_in_venv(self, script_name):
-        bin_dir = self._venv_bin()
-        script_path = bin_dir / script_name
-        assert script_path.exists(), f"Script binary {script_name} not found in {bin_dir}"
+        assert shutil.which(script_name) is not None, f"Script {script_name} not found on PATH"
 
     def test_atrace_binary_still_exists(self):
-        bin_dir = self._venv_bin()
-        assert (bin_dir / "atrace").exists()
+        assert shutil.which("atrace") is not None
