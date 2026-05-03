@@ -1,5 +1,6 @@
 import re
 import time
+
 import pytest
 
 from atrace.ids import new_ulid, resolve_prefix

@@ -9,7 +9,6 @@ from atrace.cli import main
 from atrace.commands.add import PLATFORMS
 from atrace.platforms.claude.install import ClaudePlatform
 
-
 # -- command registration ------------------------------------------------------
 
 

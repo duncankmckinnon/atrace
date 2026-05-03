@@ -4,8 +4,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 
 def _env(tmp_path: Path) -> dict[str, str]:
     env = os.environ.copy()
@@ -14,15 +12,11 @@ def _env(tmp_path: Path) -> dict[str, str]:
 
 
 def _run(args: list[str], env: dict[str, str], **kw) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [sys.executable, "-m", "atrace"] + args, env=env, **kw
-    )
+    return subprocess.run([sys.executable, "-m", "atrace"] + args, env=env, **kw)
 
 
 def _output(args: list[str], env: dict[str, str]) -> str:
-    return subprocess.check_output(
-        [sys.executable, "-m", "atrace"] + args, env=env, text=True
-    )
+    return subprocess.check_output([sys.executable, "-m", "atrace"] + args, env=env, text=True)
 
 
 def _ingest(env: dict[str, str], platform: str, sid: str, cwd: str, events: list[dict]) -> None:
@@ -102,10 +96,16 @@ def test_tail_command(tmp_path: Path):
 
 def test_events_json_mode(tmp_path: Path):
     env = _env(tmp_path)
-    _ingest(env, "claude", "01JSONTEST1", "/p", [
-        {"t": "msg", "data": "json check"},
-        {"t": "other", "data": 42},
-    ])
+    _ingest(
+        env,
+        "claude",
+        "01JSONTEST1",
+        "/p",
+        [
+            {"t": "msg", "data": "json check"},
+            {"t": "other", "data": 42},
+        ],
+    )
 
     out = _output(["events", "01JSON", "--json"], env)
     lines = out.strip().splitlines()
@@ -119,9 +119,15 @@ def test_events_json_mode(tmp_path: Path):
 
 def test_event_field_extraction(tmp_path: Path):
     env = _env(tmp_path)
-    _ingest(env, "claude", "01FIELDTST1", "/p", [
-        {"t": "tool", "data": {"name": "read", "path": "/foo/bar"}},
-    ])
+    _ingest(
+        env,
+        "claude",
+        "01FIELDTST1",
+        "/p",
+        [
+            {"t": "tool", "data": {"name": "read", "path": "/foo/bar"}},
+        ],
+    )
 
     out = _output(["event", "01FIELD", "0", "--field", "name"], env)
     assert out.strip() == "read"

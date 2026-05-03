@@ -5,12 +5,11 @@ from pathlib import Path
 import pytest
 
 from atrace.config import Config
-from atrace.meta import SessionMeta, write_meta
-from atrace.paths import meta_path, events_path, session_dir, sessions_root
+from atrace.meta import SessionMeta
+from atrace.paths import session_dir, sessions_root
 from atrace.reader import SessionReader
 from atrace.store import Store
 from atrace.writer import SessionWriter
-
 
 # -- open_session --------------------------------------------------------------
 
@@ -31,9 +30,7 @@ class TestOpenSession:
 
     def test_passes_extra_to_writer(self, tmp_store: Store):
         extra = {"model": "opus"}
-        with tmp_store.open_session(
-            "01J9G7", platform="claude", cwd="/p", extra=extra
-        ) as w:
+        with tmp_store.open_session("01J9G7", platform="claude", cwd="/p", extra=extra) as w:
             w.append("x", 1)
         m = tmp_store.get_meta("01J9G7")
         assert m.extra == extra
@@ -273,8 +270,11 @@ class TestStoreInit:
 class TestAppendEvent:
     def test_one_shot(self, tmp_store: Store):
         seq = tmp_store.append_event(
-            session_id="01J9G7XK4P", platform="claude", cwd="/p",
-            t="user_message", data="hi",
+            session_id="01J9G7XK4P",
+            platform="claude",
+            cwd="/p",
+            t="user_message",
+            data="hi",
         )
         assert seq == 0
         metas = list(tmp_store.list_sessions())
@@ -285,25 +285,36 @@ class TestAppendEvent:
 
     def test_appends_to_existing_session(self, tmp_store: Store):
         tmp_store.append_event(
-            session_id="01J9G7XK4P", platform="claude", cwd="/p",
-            t="user_message", data="hi",
+            session_id="01J9G7XK4P",
+            platform="claude",
+            cwd="/p",
+            t="user_message",
+            data="hi",
         )
         seq = tmp_store.append_event(
-            session_id="01J9G7XK4P", platform="claude", cwd="/p",
-            t="assistant_message", data="hello",
+            session_id="01J9G7XK4P",
+            platform="claude",
+            cwd="/p",
+            t="assistant_message",
+            data="hello",
         )
         assert seq == 1
 
     def test_returns_int(self, tmp_store: Store):
         result = tmp_store.append_event(
-            session_id="SID1", platform="claude", cwd="/p",
-            t="x", data=1,
+            session_id="SID1",
+            platform="claude",
+            cwd="/p",
+            t="x",
+            data=1,
         )
         assert isinstance(result, int)
 
     def test_data_none_accepted(self, tmp_store: Store):
         seq = tmp_store.append_event(
-            session_id="SID1", platform="claude", cwd="/p",
+            session_id="SID1",
+            platform="claude",
+            cwd="/p",
             t="session_start",
         )
         assert seq == 0
@@ -311,8 +322,11 @@ class TestAppendEvent:
     def test_complex_data(self, tmp_store: Store):
         payload = {"tool_name": "Read", "args": {"path": "/foo"}, "nested": [1, 2]}
         seq = tmp_store.append_event(
-            session_id="SID1", platform="claude", cwd="/p",
-            t="tool_call", data=payload,
+            session_id="SID1",
+            platform="claude",
+            cwd="/p",
+            t="tool_call",
+            data=payload,
         )
         assert seq == 0
         r = tmp_store.reader("SID1")
@@ -321,8 +335,11 @@ class TestAppendEvent:
 
     def test_event_readable_after_append(self, tmp_store: Store):
         tmp_store.append_event(
-            session_id="SID1", platform="claude", cwd="/p",
-            t="user_message", data="hello",
+            session_id="SID1",
+            platform="claude",
+            cwd="/p",
+            t="user_message",
+            data="hello",
         )
         r = tmp_store.reader("SID1")
         events = list(r.iter_events())
@@ -333,8 +350,11 @@ class TestAppendEvent:
     def test_many_sequential_appends(self, tmp_store: Store):
         for i in range(10):
             seq = tmp_store.append_event(
-                session_id="SID1", platform="claude", cwd="/p",
-                t=f"evt_{i}", data=i,
+                session_id="SID1",
+                platform="claude",
+                cwd="/p",
+                t=f"evt_{i}",
+                data=i,
             )
             assert seq == i
         m = tmp_store.get_meta("SID1")
@@ -342,12 +362,18 @@ class TestAppendEvent:
 
     def test_different_sessions_independent(self, tmp_store: Store):
         tmp_store.append_event(
-            session_id="SID_A", platform="claude", cwd="/p",
-            t="a", data=1,
+            session_id="SID_A",
+            platform="claude",
+            cwd="/p",
+            t="a",
+            data=1,
         )
         tmp_store.append_event(
-            session_id="SID_B", platform="claude", cwd="/q",
-            t="b", data=2,
+            session_id="SID_B",
+            platform="claude",
+            cwd="/q",
+            t="b",
+            data=2,
         )
         metas = sorted(tmp_store.list_sessions(), key=lambda m: m.session_id)
         assert len(metas) == 2
@@ -356,8 +382,11 @@ class TestAppendEvent:
 
     def test_session_stays_open_after_append(self, tmp_store: Store):
         tmp_store.append_event(
-            session_id="SID1", platform="claude", cwd="/p",
-            t="x", data=1,
+            session_id="SID1",
+            platform="claude",
+            cwd="/p",
+            t="x",
+            data=1,
         )
         m = tmp_store.get_meta("SID1")
         assert m.status == "open"
@@ -365,12 +394,18 @@ class TestAppendEvent:
 
     def test_different_platforms(self, tmp_store: Store):
         tmp_store.append_event(
-            session_id="SID1", platform="claude", cwd="/p",
-            t="x", data=1,
+            session_id="SID1",
+            platform="claude",
+            cwd="/p",
+            t="x",
+            data=1,
         )
         tmp_store.append_event(
-            session_id="SID2", platform="cursor", cwd="/p",
-            t="y", data=2,
+            session_id="SID2",
+            platform="cursor",
+            cwd="/p",
+            t="y",
+            data=2,
         )
         claude_sessions = list(tmp_store.list_sessions(platform="claude"))
         cursor_sessions = list(tmp_store.list_sessions(platform="cursor"))
@@ -384,8 +419,11 @@ class TestAppendEvent:
 class TestCloseSession:
     def test_marks_closed(self, tmp_store: Store):
         tmp_store.append_event(
-            session_id="01J9G7XK4P", platform="claude", cwd="/p",
-            t="x", data=1,
+            session_id="01J9G7XK4P",
+            platform="claude",
+            cwd="/p",
+            t="x",
+            data=1,
         )
         tmp_store.close_session("01J9G7XK4P", platform="claude")
         m = next(tmp_store.list_sessions())
@@ -397,8 +435,11 @@ class TestCloseSession:
 
     def test_no_op_for_missing_platform(self, tmp_store: Store):
         tmp_store.append_event(
-            session_id="SID1", platform="claude", cwd="/p",
-            t="x", data=1,
+            session_id="SID1",
+            platform="claude",
+            cwd="/p",
+            t="x",
+            data=1,
         )
         tmp_store.close_session("SID1", platform="cursor")
         # Original session should still be open
@@ -407,10 +448,14 @@ class TestCloseSession:
 
     def test_sets_ended_at_timestamp(self, tmp_store: Store):
         import re
+
         ts_re = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
         tmp_store.append_event(
-            session_id="SID1", platform="claude", cwd="/p",
-            t="x", data=1,
+            session_id="SID1",
+            platform="claude",
+            cwd="/p",
+            t="x",
+            data=1,
         )
         tmp_store.close_session("SID1", platform="claude")
         m = tmp_store.get_meta("SID1")
@@ -419,8 +464,11 @@ class TestCloseSession:
     def test_preserves_event_count(self, tmp_store: Store):
         for i in range(3):
             tmp_store.append_event(
-                session_id="SID1", platform="claude", cwd="/p",
-                t=f"evt_{i}", data=i,
+                session_id="SID1",
+                platform="claude",
+                cwd="/p",
+                t=f"evt_{i}",
+                data=i,
             )
         tmp_store.close_session("SID1", platform="claude")
         m = tmp_store.get_meta("SID1")
@@ -428,8 +476,11 @@ class TestCloseSession:
 
     def test_preserves_started_at(self, tmp_store: Store):
         tmp_store.append_event(
-            session_id="SID1", platform="claude", cwd="/p",
-            t="x", data=1,
+            session_id="SID1",
+            platform="claude",
+            cwd="/p",
+            t="x",
+            data=1,
         )
         started = tmp_store.get_meta("SID1").started_at
         tmp_store.close_session("SID1", platform="claude")
@@ -438,22 +489,31 @@ class TestCloseSession:
 
     def test_close_then_append_reopens(self, tmp_store: Store):
         tmp_store.append_event(
-            session_id="SID1", platform="claude", cwd="/p",
-            t="a", data=1,
+            session_id="SID1",
+            platform="claude",
+            cwd="/p",
+            t="a",
+            data=1,
         )
         tmp_store.close_session("SID1", platform="claude")
         assert tmp_store.get_meta("SID1").status == "closed"
         seq = tmp_store.append_event(
-            session_id="SID1", platform="claude", cwd="/p",
-            t="b", data=2,
+            session_id="SID1",
+            platform="claude",
+            cwd="/p",
+            t="b",
+            data=2,
         )
         assert seq == 1
         assert tmp_store.get_meta("SID1").status == "open"
 
     def test_idempotent_close(self, tmp_store: Store):
         tmp_store.append_event(
-            session_id="SID1", platform="claude", cwd="/p",
-            t="x", data=1,
+            session_id="SID1",
+            platform="claude",
+            cwd="/p",
+            t="x",
+            data=1,
         )
         tmp_store.close_session("SID1", platform="claude")
         tmp_store.close_session("SID1", platform="claude")

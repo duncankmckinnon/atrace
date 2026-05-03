@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import fcntl
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +13,7 @@ from atrace.paths import events_path, index_path, meta_path
 
 
 def _utc_iso_ms() -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
 
 
@@ -46,7 +46,7 @@ class SessionWriter:
         platform: str,
         cwd: str,
         extra: dict[str, Any] | None = None,
-    ) -> "SessionWriter":
+    ) -> SessionWriter:
         session_dir.mkdir(parents=True, exist_ok=True)
         existing = read_meta(meta_path(session_dir))
         if existing is None:
@@ -106,7 +106,7 @@ class SessionWriter:
         self._meta.last_seq = self._next_seq - 1 if self._next_seq > 0 else -1
         write_meta(self._meta_path, self._meta)
 
-    def __enter__(self) -> "SessionWriter":
+    def __enter__(self) -> SessionWriter:
         return self
 
     def __exit__(self, *exc: object) -> None:

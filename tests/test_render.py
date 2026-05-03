@@ -1,14 +1,13 @@
 """Tests for atrace.render — terse, jsonl, and tree event renderers."""
+
 from __future__ import annotations
 
 import json
 
-import pytest
-
 from atrace.render import render_event_jsonl, render_event_terse, render_event_tree
 
-
 # -- helpers ------------------------------------------------------------------
+
 
 def _ev(**kw):
     """Build a minimal event dict with sensible defaults."""
@@ -18,6 +17,7 @@ def _ev(**kw):
 
 
 # -- terse renderer -----------------------------------------------------------
+
 
 class TestRenderEventTerse:
     # Basic format: "<seq> <t> <content>"
@@ -72,7 +72,7 @@ class TestRenderEventTerse:
         line = render_event_terse(_ev(t="weird", seq=1, data={"a": {"b": 1}}))
         assert line.startswith("1 weird ")
         assert "{" in line
-        parsed = json.loads(line[len("1 weird "):])
+        parsed = json.loads(line[len("1 weird ") :])
         assert parsed == {"a": {"b": 1}}
 
     def test_nested_object_with_list_value(self):
@@ -84,7 +84,7 @@ class TestRenderEventTerse:
     def test_list_data_uses_json(self):
         """Top-level list renders as compact JSON."""
         line = render_event_terse(_ev(t="items", seq=0, data=[1, 2, 3]))
-        assert line == '0 items [1,2,3]'
+        assert line == "0 items [1,2,3]"
 
     def test_list_of_strings(self):
         line = render_event_terse(_ev(t="tags", seq=0, data=["a", "b"]))
@@ -146,8 +146,8 @@ class TestRenderEventTerse:
 
 # -- jsonl renderer -----------------------------------------------------------
 
-class TestRenderEventJsonl:
 
+class TestRenderEventJsonl:
     def test_compact_separators(self):
         line = render_event_jsonl(_ev(t="x", seq=2, data={"a": 1}))
         assert line == '{"t":"x","ts":"2026-04-30T17:00:00.000Z","seq":2,"data":{"a":1}}'
@@ -193,6 +193,7 @@ class TestRenderEventJsonl:
     def test_default_str_for_non_serializable(self):
         """default=str should handle non-JSON-native types."""
         from datetime import datetime
+
         dt = datetime(2026, 4, 30, 12, 0, 0)
         line = render_event_jsonl(_ev(data={"when": dt}))
         parsed = json.loads(line)
@@ -201,8 +202,8 @@ class TestRenderEventJsonl:
 
 # -- tree renderer ------------------------------------------------------------
 
-class TestRenderEventTree:
 
+class TestRenderEventTree:
     def test_header_format(self):
         tree = render_event_tree(_ev(t="tool_call", seq=4, ts="2026-04-30T17:00:00.000Z"))
         first_line = tree.split("\n")[0]
@@ -266,25 +267,31 @@ class TestRenderEventTree:
 
 # -- _is_flat_object (internal helper) ----------------------------------------
 
+
 class TestIsFlatObject:
     """Test the internal helper to ensure correct flat/nested classification."""
 
     def test_flat_all_scalars(self):
         from atrace.render import _is_flat_object
+
         assert _is_flat_object({"a": 1, "b": "x", "c": True}) is True
 
     def test_not_flat_nested_dict(self):
         from atrace.render import _is_flat_object
+
         assert _is_flat_object({"a": {"b": 1}}) is False
 
     def test_not_flat_nested_list(self):
         from atrace.render import _is_flat_object
+
         assert _is_flat_object({"a": [1, 2]}) is False
 
     def test_empty_dict_is_flat(self):
         from atrace.render import _is_flat_object
+
         assert _is_flat_object({}) is True
 
     def test_none_value_is_flat(self):
         from atrace.render import _is_flat_object
+
         assert _is_flat_object({"a": None}) is True

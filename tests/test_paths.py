@@ -1,4 +1,5 @@
 """Tests for atrace.paths — pure path-layout helpers."""
+
 from pathlib import Path
 
 from atrace.paths import (
@@ -22,14 +23,10 @@ class TestSessionsRoot:
 
 class TestPlatformDir:
     def test_claude(self):
-        assert platform_dir(Path("/tmp/atrace"), "claude") == Path(
-            "/tmp/atrace/traces/claude"
-        )
+        assert platform_dir(Path("/tmp/atrace"), "claude") == Path("/tmp/atrace/traces/claude")
 
     def test_cursor(self):
-        assert platform_dir(Path("/tmp/atrace"), "cursor") == Path(
-            "/tmp/atrace/traces/cursor"
-        )
+        assert platform_dir(Path("/tmp/atrace"), "cursor") == Path("/tmp/atrace/traces/cursor")
 
     def test_nested_under_sessions_root(self):
         home = Path("/tmp/atrace")
@@ -50,9 +47,7 @@ class TestSessionDir:
     def test_nested_under_platform_dir(self):
         home = Path("/tmp/atrace")
         sid = "01J9G7XK4P"
-        assert session_dir(home, "claude", sid) == (
-            platform_dir(home, "claude") / sid
-        )
+        assert session_dir(home, "claude", sid) == (platform_dir(home, "claude") / sid)
 
 
 class TestEventFiles:

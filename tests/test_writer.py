@@ -7,10 +7,9 @@ import pytest
 
 from atrace.codec import decode_event
 from atrace.index import IndexReader
-from atrace.meta import read_meta, write_meta, SessionMeta
+from atrace.meta import SessionMeta, read_meta, write_meta
 from atrace.paths import events_path, index_path, meta_path
 from atrace.writer import SessionWriter, _utc_iso_ms
-
 
 # -- helpers -------------------------------------------------------------------
 
@@ -22,7 +21,6 @@ def _open_writer(tmp_path: Path, sid: str = "01J9G7XK4P", **kw) -> SessionWriter
     defaults = dict(session_id=sid, platform="claude", cwd="/proj")
     defaults.update(kw)
     return SessionWriter.open(sd, **defaults)
-
 
 
 # -- open / directory creation -------------------------------------------------
@@ -66,9 +64,7 @@ class TestOpen:
     def test_extra_passed_through(self, tmp_path: Path):
         sd = tmp_path / "01J9G7"
         extra = {"model": "opus", "tags": ["a"]}
-        w = SessionWriter.open(
-            sd, session_id="01J9G7", platform="claude", cwd="/p", extra=extra
-        )
+        w = SessionWriter.open(sd, session_id="01J9G7", platform="claude", cwd="/p", extra=extra)
         m = read_meta(meta_path(sd))
         assert m.extra == extra
         w.close()
@@ -346,9 +342,7 @@ class TestReopen:
 class TestContextManager:
     def test_context_manager_closes(self, tmp_path: Path):
         sd = tmp_path / "01J9G7XK4P"
-        with SessionWriter.open(
-            sd, session_id="01J9G7XK4P", platform="claude", cwd="/p"
-        ) as w:
+        with SessionWriter.open(sd, session_id="01J9G7XK4P", platform="claude", cwd="/p") as w:
             w.append("a", 1)
         m = read_meta(meta_path(sd))
         assert m.status == "closed"
@@ -580,13 +574,16 @@ class TestFlushAndDetach:
 class TestUtcIsoMsPublic:
     def test_format_matches_private(self):
         from atrace.writer import utc_iso_ms
+
         ts = utc_iso_ms()
         assert _TS_RE.match(ts), f"Timestamp {ts!r} does not match expected format"
 
     def test_returns_string(self):
         from atrace.writer import utc_iso_ms
+
         assert isinstance(utc_iso_ms(), str)
 
     def test_ends_with_z(self):
         from atrace.writer import utc_iso_ms
+
         assert utc_iso_ms().endswith("Z")

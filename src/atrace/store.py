@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from atrace.config import Config
 from atrace.meta import SessionMeta, read_meta, write_meta
@@ -8,8 +9,10 @@ from atrace.paths import (
     events_path,
     meta_path,
     platform_dir,
-    session_dir as _session_dir,
     sessions_root,
+)
+from atrace.paths import (
+    session_dir as _session_dir,
 )
 from atrace.reader import SessionReader
 from atrace.writer import SessionWriter, utc_iso_ms
@@ -42,11 +45,7 @@ class Store:
         root = sessions_root(self.config.root)
         if not root.exists():
             return
-        platforms = (
-            [platform]
-            if platform
-            else sorted(p.name for p in root.iterdir() if p.is_dir())
-        )
+        platforms = [platform] if platform else sorted(p.name for p in root.iterdir() if p.is_dir())
         for pname in platforms:
             pdir = platform_dir(self.config.root, pname)
             if not pdir.exists():
@@ -76,9 +75,7 @@ class Store:
         if not candidates:
             raise ValueError(f"no session matching prefix {prefix!r}")
         if len(candidates) > 1:
-            raise ValueError(
-                f"prefix {prefix!r} ambiguous: {[c[1] for c in candidates]}"
-            )
+            raise ValueError(f"prefix {prefix!r} ambiguous: {[c[1] for c in candidates]}")
         return candidates[0]
 
     def reader(self, prefix: str) -> SessionReader:

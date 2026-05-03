@@ -1,8 +1,8 @@
 """Tests for atrace.meta: SessionMeta dataclass and atomic YAML read/write."""
+
 from __future__ import annotations
 
-import os
-from dataclasses import FrozenInstanceError, asdict
+from dataclasses import asdict
 from pathlib import Path
 
 import pytest

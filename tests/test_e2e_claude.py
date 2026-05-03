@@ -16,10 +16,15 @@ def _env(tmp_path: Path) -> dict[str, str]:
     return env
 
 
-def _atrace(*args: str, env: dict[str, str], stdin: bytes | None = None) -> subprocess.CompletedProcess:
+def _atrace(
+    *args: str, env: dict[str, str], stdin: bytes | None = None
+) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, "-m", "atrace", *args],
-        env=env, input=stdin, check=False, capture_output=True,
+        env=env,
+        input=stdin,
+        check=False,
+        capture_output=True,
     )
 
 
@@ -28,7 +33,8 @@ def _hook(name: str, payload: dict, env: dict[str, str]) -> subprocess.Completed
         [name],
         env=env,
         input=json.dumps(payload).encode(),
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
     )
 
 
@@ -251,7 +257,11 @@ def test_multiple_sessions_independent(tmp_path: Path):
     sid_b = "multi-sess-bbb"
 
     _hook("atrace-claude-session-start", {"session_id": sid_a, "cwd": "/a"}, env)
-    _hook("atrace-claude-user-prompt-submit", {"session_id": sid_a, "cwd": "/a", "prompt": "alpha"}, env)
+    _hook(
+        "atrace-claude-user-prompt-submit",
+        {"session_id": sid_a, "cwd": "/a", "prompt": "alpha"},
+        env,
+    )
     _hook("atrace-claude-session-start", {"session_id": sid_b, "cwd": "/b"}, env)
     _hook("atrace-claude-session-end", {"session_id": sid_a, "cwd": "/a"}, env)
 
@@ -273,9 +283,15 @@ def test_search_on_hook_created_data(tmp_path: Path):
     sid = "search-hook-001"
 
     _hook("atrace-claude-session-start", {"session_id": sid, "cwd": "/proj"}, env)
-    _hook("atrace-claude-user-prompt-submit", {
-        "session_id": sid, "cwd": "/proj", "prompt": "xylophone_unique_word",
-    }, env)
+    _hook(
+        "atrace-claude-user-prompt-submit",
+        {
+            "session_id": sid,
+            "cwd": "/proj",
+            "prompt": "xylophone_unique_word",
+        },
+        env,
+    )
     _hook("atrace-claude-session-end", {"session_id": sid, "cwd": "/proj"}, env)
 
     r = _atrace("search", "xylophone_unique_word", env=env)
@@ -288,7 +304,9 @@ def test_stats_on_hook_created_data(tmp_path: Path):
     sid = "stats-hook-001"
 
     _hook("atrace-claude-session-start", {"session_id": sid, "cwd": "/proj"}, env)
-    _hook("atrace-claude-user-prompt-submit", {"session_id": sid, "cwd": "/proj", "prompt": "hi"}, env)
+    _hook(
+        "atrace-claude-user-prompt-submit", {"session_id": sid, "cwd": "/proj", "prompt": "hi"}, env
+    )
     _hook("atrace-claude-session-end", {"session_id": sid, "cwd": "/proj"}, env)
 
     r = _atrace("stats", env=env)
@@ -310,11 +328,17 @@ def test_event_field_extraction_on_hook_data(tmp_path: Path):
     sid = "field-ext-001"
 
     _hook("atrace-claude-session-start", {"session_id": sid, "cwd": "/proj"}, env)
-    _hook("atrace-claude-pre-tool-use", {
-        "session_id": sid, "cwd": "/proj",
-        "tool_name": "Bash", "tool_use_id": "tu_99",
-        "tool_input": {"command": "ls -la"},
-    }, env)
+    _hook(
+        "atrace-claude-pre-tool-use",
+        {
+            "session_id": sid,
+            "cwd": "/proj",
+            "tool_name": "Bash",
+            "tool_use_id": "tu_99",
+            "tool_input": {"command": "ls -la"},
+        },
+        env,
+    )
 
     r = _atrace("event", sid, "1", "--field", "tool_name", env=env)
     assert r.returncode == 0
@@ -330,7 +354,9 @@ def test_events_json_mode_on_hook_data(tmp_path: Path):
     sid = "json-mode-001"
 
     _hook("atrace-claude-session-start", {"session_id": sid, "cwd": "/proj"}, env)
-    _hook("atrace-claude-user-prompt-submit", {"session_id": sid, "cwd": "/proj", "prompt": "hi"}, env)
+    _hook(
+        "atrace-claude-user-prompt-submit", {"session_id": sid, "cwd": "/proj", "prompt": "hi"}, env
+    )
 
     r = _atrace("events", sid, "--json", env=env)
     assert r.returncode == 0
@@ -351,11 +377,16 @@ def test_nested_payload_preserved_via_subprocess(tmp_path: Path):
     sid = "nested-payload-001"
 
     _hook("atrace-claude-session-start", {"session_id": sid, "cwd": "/p"}, env)
-    _hook("atrace-claude-pre-tool-use", {
-        "session_id": sid, "cwd": "/p",
-        "tool_name": "Read",
-        "tool_input": {"nested": {"deep": True, "list": [1, 2, 3]}},
-    }, env)
+    _hook(
+        "atrace-claude-pre-tool-use",
+        {
+            "session_id": sid,
+            "cwd": "/p",
+            "tool_name": "Read",
+            "tool_input": {"nested": {"deep": True, "list": [1, 2, 3]}},
+        },
+        env,
+    )
 
     r = _atrace("event", sid, "1", env=env)
     assert r.returncode == 0
@@ -369,9 +400,15 @@ def test_large_payload_via_subprocess(tmp_path: Path):
     sid = "large-payload-001"
     big_content = "x" * 10000
 
-    _hook("atrace-claude-stop", {
-        "session_id": sid, "cwd": "/p", "content": big_content,
-    }, env)
+    _hook(
+        "atrace-claude-stop",
+        {
+            "session_id": sid,
+            "cwd": "/p",
+            "content": big_content,
+        },
+        env,
+    )
 
     r = _atrace("event", sid, "0", env=env)
     assert r.returncode == 0

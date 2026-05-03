@@ -1,4 +1,5 @@
 """Tests for pyproject.toml Claude hook console script entries."""
+
 from __future__ import annotations
 
 import importlib
@@ -34,9 +35,7 @@ class TestPyprojectScriptEntries:
     @pytest.mark.parametrize("script_name,target", list(EXPECTED_SCRIPTS.items()))
     def test_script_declared_in_pyproject(self, script_name, target):
         expected_line = f'{script_name} = "{target}"'
-        assert expected_line in self.content, (
-            f"Missing script entry: {expected_line}"
-        )
+        assert expected_line in self.content, f"Missing script entry: {expected_line}"
 
     def test_all_ten_scripts_present(self):
         for script_name, target in EXPECTED_SCRIPTS.items():
@@ -71,9 +70,9 @@ class TestConsoleScriptsRegistered:
     @pytest.mark.parametrize("script_name,target", list(EXPECTED_SCRIPTS.items()))
     def test_entrypoint_registered(self, script_name, target):
         scripts = self._get_atrace_console_scripts()
-        assert script_name in scripts, (
-            f"{script_name} not in registered console_scripts: {sorted(scripts.keys())}"
-        )
+        assert (
+            script_name in scripts
+        ), f"{script_name} not in registered console_scripts: {sorted(scripts.keys())}"
         assert scripts[script_name] == target
 
     def test_all_ten_hooks_registered(self):
@@ -84,9 +83,9 @@ class TestConsoleScriptsRegistered:
 
     def test_total_atrace_entrypoints(self):
         scripts = self._get_atrace_console_scripts()
-        assert len(scripts) == 11, (
-            f"Expected 11 atrace-* console scripts, got {len(scripts)}: {sorted(scripts.keys())}"
-        )
+        assert (
+            len(scripts) == 11
+        ), f"Expected 11 atrace-* console scripts, got {len(scripts)}: {sorted(scripts.keys())}"
 
 
 class TestScriptNamesMatchConstants:
@@ -100,9 +99,9 @@ class TestScriptNamesMatchConstants:
 
     @pytest.mark.parametrize("event,script_name", list(HOOK_EVENTS.items()))
     def test_each_hook_event_maps_to_expected_script(self, event, script_name):
-        assert script_name in EXPECTED_SCRIPTS, (
-            f"HOOK_EVENTS[{event!r}] = {script_name!r} not in expected scripts"
-        )
+        assert (
+            script_name in EXPECTED_SCRIPTS
+        ), f"HOOK_EVENTS[{event!r}] = {script_name!r} not in expected scripts"
 
 
 class TestEntryPointFunctionsCallable:
@@ -118,18 +117,20 @@ class TestEntryPointFunctionsCallable:
     @pytest.mark.parametrize("script_name,target", list(EXPECTED_SCRIPTS.items()))
     def test_target_function_takes_no_args(self, script_name, target):
         import inspect
+
         module_path, func_name = target.rsplit(":", 1)
         mod = importlib.import_module(module_path)
         fn = getattr(mod, func_name)
         sig = inspect.signature(fn)
         required = [
-            p for p in sig.parameters.values()
+            p
+            for p in sig.parameters.values()
             if p.default is inspect.Parameter.empty
             and p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
         ]
-        assert len(required) == 0, (
-            f"{target} requires {len(required)} args, but console scripts call with no args"
-        )
+        assert (
+            len(required) == 0
+        ), f"{target} requires {len(required)} args, but console scripts call with no args"
 
 
 class TestScriptBinaryExists:
@@ -146,9 +147,7 @@ class TestScriptBinaryExists:
     def test_script_binary_in_venv(self, script_name):
         bin_dir = self._venv_bin()
         script_path = bin_dir / script_name
-        assert script_path.exists(), (
-            f"Script binary {script_name} not found in {bin_dir}"
-        )
+        assert script_path.exists(), f"Script binary {script_name} not found in {bin_dir}"
 
     def test_atrace_binary_still_exists(self):
         bin_dir = self._venv_bin()
