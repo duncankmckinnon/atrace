@@ -1,14 +1,16 @@
 # Releasing thirdeye
 
+The PyPI distribution is published as **`thrdi`**, while the import name and CLI command are **`thirdeye`**. Users do `pipx install thrdi` and then run `thirdeye ...` from any shell.
+
 Versions are derived from git tags via `setuptools-scm`. Tagging a commit triggers a CI build and a PyPI publish via OIDC trusted publishing.
 
 ## One-time setup
 
 These must be done once before the first release.
 
-1. **Reserve the package name on PyPI.** Sign in at https://pypi.org and confirm `thirdeye` (or your chosen distribution name) is available. If it's taken, change `name` in `pyproject.toml` to a free alternative (the console script `thirdeye` stays the same).
+1. **Reserve the distribution name on PyPI.** Sign in at https://pypi.org and confirm `thrdi` is available at https://pypi.org/project/thrdi/. If taken, change `name` in `pyproject.toml` to a free alternative (the import name and CLI script stay `thirdeye`).
 2. **Configure trusted publishing on PyPI.** Go to https://pypi.org/manage/account/publishing/ → "Add a new pending publisher" with:
-   - PyPI Project Name: `thirdeye`
+   - PyPI Project Name: `thrdi`
    - Owner: `duncankmckinnon`
    - Repository: `thirdeye`
    - Workflow filename: `release.yml`
@@ -21,7 +23,7 @@ These must be done once before the first release.
 ```bash
 # Make sure main is green
 git checkout main && git pull
-uv run pytest -v
+pytest tests/ -v
 
 # Tag and push
 git tag v0.1.0
@@ -29,11 +31,12 @@ git push origin v0.1.0
 ```
 
 GitHub Actions runs the `release` workflow:
-1. Builds sdist + wheel using the tag as the version
-2. Runs the test suite against the built code
+1. Runs the test suite
+2. Builds sdist + wheel using the tag as the version
 3. Publishes to PyPI via OIDC
+4. Creates a GitHub Release with auto-generated changelog
 
-After ~2 minutes the release is live. `pipx install thirdeye` (or `uv tool install thirdeye`) installs it.
+After ~2 minutes the release is live. `pipx install thrdi` (or `uv tool install thrdi`) installs it; the `thirdeye` command becomes available on PATH.
 
 ## Pre-releases
 
@@ -43,7 +46,7 @@ Use PEP 440-style suffixed tags:
 - `v0.2.0b1` — beta
 - `v0.2.0rc1` — release candidate
 
-PyPI accepts these. `pipx install --pip-args '--pre' thirdeye` will pick them up; otherwise stable releases are preferred.
+PyPI accepts these. `pipx install --pip-args '--pre' thrdi` will pick them up; otherwise stable releases are preferred.
 
 ## Local development version
 
@@ -52,7 +55,7 @@ Without any tag the package version resolves to `0.1.0.dev0` (set as `fallback_v
 ## Manual build (no publish)
 
 ```bash
-uv build              # produces dist/thirdeye-*.tar.gz and dist/thirdeye-*.whl
+python -m build       # produces dist/thrdi-*.tar.gz and dist/thrdi-*.whl
 ```
 
 This runs locally for inspection without going to PyPI.
@@ -62,9 +65,9 @@ This runs locally for inspection without going to PyPI.
 Install local hooks once after cloning:
 
 ```bash
-uv run pre-commit install
+pre-commit install
 ```
 
-Run on demand: `uv run pre-commit run --all-files`.
+Run on demand: `pre-commit run --all-files`.
 
-CI runs the same hooks on every PR via the `pre-commit` job in `.github/workflows/test.yml`.
+CI runs the same hooks on every PR via the `lint` job in `.github/workflows/test.yml`.

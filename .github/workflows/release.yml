@@ -106,8 +106,8 @@ jobs:
             ## Install
 
             ```bash
-            pipx install thirdeye
-            # or: uv tool install thirdeye
+            pipx install thrdi
+            # or: uv tool install thrdi
             ```
           files: dist/*
           generate_release_notes: false
