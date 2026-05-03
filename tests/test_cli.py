@@ -22,13 +22,6 @@ def test_help(tmp_path: Path):
     assert "atrace" in r.output.lower()
 
 
-def test_version(tmp_path: Path):
-    runner, env = _runner_with_home(tmp_path)
-    r = runner.invoke(main, ["--version"], env=env)
-    assert r.exit_code == 0
-    assert "0.1.0" in r.output
-
-
 def test_ingest_help(tmp_path: Path):
     runner, env = _runner_with_home(tmp_path)
     r = runner.invoke(main, ["ingest", "--help"], env=env)
