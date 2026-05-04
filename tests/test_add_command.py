@@ -18,16 +18,22 @@ def test_add_appears_in_help():
     assert "add" in r.output
 
 
+def test_remove_appears_in_help():
+    r = CliRunner().invoke(main, ["--help"])
+    assert r.exit_code == 0
+    assert "remove" in r.output
+
+
 def test_add_help_mentions_claude():
     r = CliRunner().invoke(main, ["add", "--help"])
     assert r.exit_code == 0
     assert "--claude" in r.output
 
 
-def test_add_help_mentions_remove():
-    r = CliRunner().invoke(main, ["add", "--help"])
+def test_remove_help_mentions_claude():
+    r = CliRunner().invoke(main, ["remove", "--help"])
     assert r.exit_code == 0
-    assert "--remove" in r.output
+    assert "--claude" in r.output
 
 
 # -- platform flag required ----------------------------------------------------
@@ -39,13 +45,13 @@ def test_add_requires_platform():
     assert "platform" in r.output.lower()
 
 
-def test_add_remove_without_platform_fails():
-    r = CliRunner().invoke(main, ["add", "--remove"])
+def test_remove_requires_platform():
+    r = CliRunner().invoke(main, ["remove"])
     assert r.exit_code != 0
     assert "platform" in r.output.lower()
 
 
-# -- install (--claude) -------------------------------------------------------
+# -- install (add --claude) ----------------------------------------------------
 
 
 def test_add_claude_writes_settings(tmp_path: Path, monkeypatch):
@@ -98,15 +104,15 @@ def test_add_claude_preserves_existing_settings(tmp_path: Path, monkeypatch):
     assert "hooks" in data
 
 
-# -- uninstall (--claude --remove) ---------------------------------------------
+# -- uninstall (remove --claude) -----------------------------------------------
 
 
-def test_add_claude_remove(tmp_path: Path, monkeypatch):
+def test_remove_claude(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
     monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     runner = CliRunner()
     runner.invoke(main, ["add", "--claude"])
-    r = runner.invoke(main, ["add", "--claude", "--remove"])
+    r = runner.invoke(main, ["remove", "--claude"])
     assert r.exit_code == 0, r.output
     assert "Removed" in r.output
     assert "Claude Code" in r.output
@@ -114,33 +120,33 @@ def test_add_claude_remove(tmp_path: Path, monkeypatch):
     assert "hooks" not in data
 
 
-def test_add_claude_remove_noop_when_not_installed(tmp_path: Path, monkeypatch):
+def test_remove_claude_noop_when_not_installed(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
     monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
-    r = CliRunner().invoke(main, ["add", "--claude", "--remove"])
+    r = CliRunner().invoke(main, ["remove", "--claude"])
     assert r.exit_code == 0, r.output
     assert "Removed" in r.output
 
 
-def test_add_claude_remove_preserves_other_settings(tmp_path: Path, monkeypatch):
+def test_remove_claude_preserves_other_settings(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
     settings.write_text(json.dumps({"theme": "dark"}))
     monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     runner = CliRunner()
     runner.invoke(main, ["add", "--claude"])
-    runner.invoke(main, ["add", "--claude", "--remove"])
+    runner.invoke(main, ["remove", "--claude"])
     data = json.loads(settings.read_text())
     assert data["theme"] == "dark"
     assert "hooks" not in data
 
 
-def test_add_claude_reinstall_after_remove(tmp_path: Path, monkeypatch):
+def test_reinstall_after_remove(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
     monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     runner = CliRunner()
     runner.invoke(main, ["add", "--claude"])
     first = json.loads(settings.read_text())
-    runner.invoke(main, ["add", "--claude", "--remove"])
+    runner.invoke(main, ["remove", "--claude"])
     runner.invoke(main, ["add", "--claude"])
     restored = json.loads(settings.read_text())
     assert first == restored
@@ -157,12 +163,12 @@ def test_add_install_output_contains_platform_name(tmp_path: Path, monkeypatch):
     assert "Claude Code" in r.output
 
 
-def test_add_remove_output_contains_platform_name(tmp_path: Path, monkeypatch):
+def test_remove_output_contains_platform_name(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
     monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
     runner = CliRunner()
     runner.invoke(main, ["add", "--claude"])
-    r = runner.invoke(main, ["add", "--claude", "--remove"])
+    r = runner.invoke(main, ["remove", "--claude"])
     assert r.exit_code == 0
     assert "Claude Code" in r.output
 
@@ -194,15 +200,11 @@ def test_ingest_still_works(tmp_path: Path):
 
 
 def test_platforms_dict_has_claude():
-    from thirdeye.commands.add import PLATFORMS
-
     assert "claude" in PLATFORMS
     assert PLATFORMS["claude"] is ClaudePlatform
 
 
 def test_platform_flag_value_maps_to_platforms_key():
-    from thirdeye.commands.add import PLATFORMS
-
     for key, cls in PLATFORMS.items():
         instance = cls(settings_file=Path("/fake"))
         assert instance.name == key
@@ -211,11 +213,9 @@ def test_platform_flag_value_maps_to_platforms_key():
 # -- implementation uses PLATFORMS dict ----------------------------------------
 
 
-def test_add_uses_platforms_dict(tmp_path: Path, monkeypatch):
+def test_add_uses_platforms_dict(monkeypatch):
     """The add command should dispatch via PLATFORMS[platform_flag](), not hardcode ClaudePlatform()."""
     from unittest.mock import MagicMock
-
-    from thirdeye.commands.add import PLATFORMS
 
     mock_platform = MagicMock()
     mock_platform.display_name = "Mock Platform"
@@ -228,34 +228,19 @@ def test_add_uses_platforms_dict(tmp_path: Path, monkeypatch):
     mock_platform.install.assert_called_once()
 
 
-def test_add_remove_uses_platforms_dict(tmp_path: Path, monkeypatch):
-    """The add --remove command should dispatch via PLATFORMS[platform_flag](), not hardcode ClaudePlatform()."""
+def test_remove_uses_platforms_dict(monkeypatch):
+    """The remove command should dispatch via PLATFORMS[platform_flag](), not hardcode ClaudePlatform()."""
     from unittest.mock import MagicMock
-
-    from thirdeye.commands.add import PLATFORMS
 
     mock_platform = MagicMock()
     mock_platform.display_name = "Mock Platform"
     mock_cls = MagicMock(return_value=mock_platform)
 
     monkeypatch.setitem(PLATFORMS, "claude", mock_cls)
-    r = CliRunner().invoke(main, ["add", "--claude", "--remove"])
+    r = CliRunner().invoke(main, ["remove", "--claude"])
     assert r.exit_code == 0, r.output
     mock_cls.assert_called_once()
     mock_platform.uninstall.assert_called_once()
-
-
-# -- flag ordering -------------------------------------------------------------
-
-
-def test_add_remove_before_claude_flag(tmp_path: Path, monkeypatch):
-    settings = tmp_path / "settings.json"
-    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
-    runner = CliRunner()
-    runner.invoke(main, ["add", "--claude"])
-    r = runner.invoke(main, ["add", "--remove", "--claude"])
-    assert r.exit_code == 0, r.output
-    assert "Removed" in r.output
 
 
 # -- hook command structure ----------------------------------------------------
