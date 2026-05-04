@@ -8,7 +8,13 @@ from thirdeye.config import Config
 from thirdeye.store import Store
 
 _PLATFORM = "claude"
-_ROUTING_KEYS = ("session_id",)
+
+# Keys removed from the payload before storing the event:
+# - session_id, cwd: used as routing fields when calling Store.append_event,
+#   so they're redundant in event data
+# - transcript_path, agent_transcript_path: long absolute paths Claude
+#   includes in nearly every payload; pure noise for default rendering
+_STRIP_KEYS = frozenset({"session_id", "cwd", "transcript_path", "agent_transcript_path"})
 
 
 def _read_stdin() -> dict:
@@ -24,8 +30,8 @@ def _read_stdin() -> dict:
         return {}
 
 
-def _strip_routing(payload: dict) -> dict:
-    return {k: v for k, v in payload.items() if k not in _ROUTING_KEYS}
+def _strip_payload(payload: dict) -> dict:
+    return {k: v for k, v in payload.items() if k not in _STRIP_KEYS}
 
 
 def _emit(t: str, payload: dict) -> bool:
@@ -38,7 +44,7 @@ def _emit(t: str, payload: dict) -> bool:
         platform=_PLATFORM,
         cwd=cwd,
         t=t,
-        data=_strip_routing(payload),
+        data=_strip_payload(payload),
     )
     return True
 

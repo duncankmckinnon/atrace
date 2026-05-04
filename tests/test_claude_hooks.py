@@ -52,25 +52,41 @@ class TestReadStdin:
         assert hooks._read_stdin() == payload
 
 
-# -- _strip_routing ------------------------------------------------------------
+# -- _strip_payload ------------------------------------------------------------
 
 
-class TestStripRouting:
-    def test_removes_session_id(self):
-        result = hooks._strip_routing({"session_id": "abc", "cwd": "/p", "prompt": "hi"})
+class TestStripPayload:
+    def test_removes_routing_keys(self):
+        result = hooks._strip_payload({"session_id": "abc", "cwd": "/p", "prompt": "hi"})
         assert "session_id" not in result
-        assert result == {"cwd": "/p", "prompt": "hi"}
+        assert "cwd" not in result
+        assert result == {"prompt": "hi"}
+
+    def test_removes_transcript_paths(self):
+        payload = {
+            "session_id": "abc",
+            "transcript_path": "/long/path/to/transcript.jsonl",
+            "agent_transcript_path": "/long/path/to/agent.jsonl",
+            "prompt": "hi",
+        }
+        assert hooks._strip_payload(payload) == {"prompt": "hi"}
 
     def test_preserves_other_keys(self):
         payload = {"session_id": "abc", "tool_name": "Read", "tool_input": {"x": 1}}
-        result = hooks._strip_routing(payload)
+        result = hooks._strip_payload(payload)
         assert result == {"tool_name": "Read", "tool_input": {"x": 1}}
 
     def test_empty_dict(self):
-        assert hooks._strip_routing({}) == {}
+        assert hooks._strip_payload({}) == {}
 
-    def test_only_session_id(self):
-        assert hooks._strip_routing({"session_id": "abc"}) == {}
+    def test_only_strip_keys(self):
+        payload = {
+            "session_id": "abc",
+            "cwd": "/p",
+            "transcript_path": "/x",
+            "agent_transcript_path": "/y",
+        }
+        assert hooks._strip_payload(payload) == {}
 
 
 # -- _emit ---------------------------------------------------------------------
@@ -97,11 +113,30 @@ class TestEmit:
         assert len(events) == 1
         assert events[0]["t"] == "my_type"
 
-    def test_strips_session_id_from_data(self, monkeypatch, env: Path):
+    def test_strips_routing_keys_from_data(self, monkeypatch, env: Path):
         hooks._emit("x", {"session_id": "s1", "cwd": "/p", "extra": 42})
         events = list(Store(Config.load()).reader("s1").iter_events())
-        assert "session_id" not in events[0].get("data", {})
-        assert events[0]["data"]["extra"] == 42
+        data = events[0].get("data", {})
+        assert "session_id" not in data
+        assert "cwd" not in data
+        assert data["extra"] == 42
+
+    def test_strips_transcript_paths_from_data(self, monkeypatch, env: Path):
+        hooks._emit(
+            "x",
+            {
+                "session_id": "s1",
+                "cwd": "/p",
+                "transcript_path": "/long/path.jsonl",
+                "agent_transcript_path": "/long/agent.jsonl",
+                "prompt": "hi",
+            },
+        )
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        data = events[0].get("data", {})
+        assert "transcript_path" not in data
+        assert "agent_transcript_path" not in data
+        assert data == {"prompt": "hi"}
 
     def test_uses_cwd_from_payload(self, monkeypatch, env: Path):
         hooks._emit("x", {"session_id": "s1", "cwd": "/my/project"})
