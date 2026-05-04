@@ -3,7 +3,7 @@ from __future__ import annotations
 import click
 
 from thirdeye import __version__
-from thirdeye.commands.add import add
+from thirdeye.commands.add import add, remove
 from thirdeye.commands.ingest import ingest
 from thirdeye.commands.reads import event, events, list_sessions, search, show, stats, tail
 
@@ -15,6 +15,7 @@ def main() -> None:
 
 
 main.add_command(add)
+main.add_command(remove)
 main.add_command(ingest)
 main.add_command(list_sessions)
 main.add_command(show)
