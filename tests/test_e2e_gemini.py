@@ -63,9 +63,9 @@ class TestGeminiInstall:
         settings = json.loads(settings_file.read_text())
         for event, blocks in settings["hooks"].items():
             cmds = [h["command"] for block in blocks for h in block["hooks"]]
-            assert any("thirdeye-gemini" in c for c in cmds), (
-                f"no thirdeye-gemini command for {event}"
-            )
+            assert any(
+                "thirdeye-gemini" in c for c in cmds
+            ), f"no thirdeye-gemini command for {event}"
 
     def test_install_idempotent(self, tmp_path: Path):
         settings_file = tmp_path / "settings.json"

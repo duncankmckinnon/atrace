@@ -12,10 +12,15 @@ _PLATFORM = "gemini"
 # Routing keys we strip from event data because they're already used as
 # routing fields when calling Store.append_event, OR because they're
 # variants we don't want duplicated in storage.
-_STRIP_KEYS = frozenset({
-    "session_id", "sessionId",
-    "cwd", "workingDir", "working_dir",
-})
+_STRIP_KEYS = frozenset(
+    {
+        "session_id",
+        "sessionId",
+        "cwd",
+        "workingDir",
+        "working_dir",
+    }
+)
 
 
 def _read_stdin() -> dict:

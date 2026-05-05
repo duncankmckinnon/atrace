@@ -86,25 +86,19 @@ class TestFlexGet:
 
 class TestStripPayload:
     def test_removes_routing_keys(self):
-        result = hooks._strip_payload(
-            {"session_id": "abc", "cwd": "/p", "prompt": "hi"}
-        )
+        result = hooks._strip_payload({"session_id": "abc", "cwd": "/p", "prompt": "hi"})
         assert "session_id" not in result
         assert "cwd" not in result
         assert result == {"prompt": "hi"}
 
     def test_removes_camel_case_variants(self):
-        result = hooks._strip_payload(
-            {"sessionId": "abc", "workingDir": "/p", "prompt": "hi"}
-        )
+        result = hooks._strip_payload({"sessionId": "abc", "workingDir": "/p", "prompt": "hi"})
         assert "sessionId" not in result
         assert "workingDir" not in result
         assert result == {"prompt": "hi"}
 
     def test_removes_working_dir_snake_case(self):
-        result = hooks._strip_payload(
-            {"working_dir": "/p", "data": "val"}
-        )
+        result = hooks._strip_payload({"working_dir": "/p", "data": "val"})
         assert "working_dir" not in result
         assert result == {"data": "val"}
 

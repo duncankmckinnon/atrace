@@ -11,10 +11,16 @@ _PLATFORM = "codex"
 
 # Strip routing keys from stored event data because they're routing fields
 # OR camel/kebab variants we don't need duplicated in storage.
-_STRIP_KEYS = frozenset({
-    "thread-id", "thread_id", "threadId",
-    "cwd", "working-directory", "working_directory",
-})
+_STRIP_KEYS = frozenset(
+    {
+        "thread-id",
+        "thread_id",
+        "threadId",
+        "cwd",
+        "working-directory",
+        "working_directory",
+    }
+)
 
 
 def _read_argv() -> dict:

@@ -101,11 +101,7 @@ class TestInstallFreshFile:
         GeminiPlatform(settings_file=settings_file).install()
         settings = json.loads(settings_file.read_text())
         for event, script in HOOK_EVENTS.items():
-            cmds = [
-                h["command"]
-                for block in settings["hooks"][event]
-                for h in block["hooks"]
-            ]
+            cmds = [h["command"] for block in settings["hooks"][event] for h in block["hooks"]]
             assert any(script in c for c in cmds), f"{script} not in commands for {event}"
 
     def test_hook_block_structure(self, tmp_path: Path):
@@ -192,9 +188,7 @@ class TestInstallPreservesExisting:
                 }
             ],
         }
-        settings_file.write_text(
-            json.dumps({"hooks": {"SessionStart": [foreign_block]}})
-        )
+        settings_file.write_text(json.dumps({"hooks": {"SessionStart": [foreign_block]}}))
         GeminiPlatform(settings_file=settings_file).install()
         settings = json.loads(settings_file.read_text())
         blocks = settings["hooks"]["SessionStart"]
@@ -230,11 +224,7 @@ class TestInstallPreservesExisting:
         GeminiPlatform(settings_file=settings_file).install()
         settings = json.loads(settings_file.read_text())
         assert "CustomEvent" in settings["hooks"]
-        cmds = [
-            h["command"]
-            for block in settings["hooks"]["CustomEvent"]
-            for h in block["hooks"]
-        ]
+        cmds = [h["command"] for block in settings["hooks"]["CustomEvent"] for h in block["hooks"]]
         assert "/custom/hook" in cmds
 
 
@@ -281,16 +271,12 @@ class TestInstallEdgeCases:
                 }
             ],
         }
-        settings_file.write_text(
-            json.dumps({"hooks": {"SessionStart": [old_block]}})
-        )
+        settings_file.write_text(json.dumps({"hooks": {"SessionStart": [old_block]}}))
         GeminiPlatform(settings_file=settings_file).install()
         settings = json.loads(settings_file.read_text())
         blocks = settings["hooks"]["SessionStart"]
         our_blocks = [
-            block
-            for block in blocks
-            if any(h.get("name") == HOOK_NAME for h in block["hooks"])
+            block for block in blocks if any(h.get("name") == HOOK_NAME for h in block["hooks"])
         ]
         assert len(our_blocks) == 1, "should have exactly one block with our hook name"
         # The timeout should be updated to the current constant
@@ -401,19 +387,13 @@ class TestUninstallPreservesForeign:
                 }
             ],
         }
-        settings_file.write_text(
-            json.dumps({"hooks": {"SessionStart": [foreign_block]}})
-        )
+        settings_file.write_text(json.dumps({"hooks": {"SessionStart": [foreign_block]}}))
         p = GeminiPlatform(settings_file=settings_file)
         p.install()
         p.uninstall()
         settings = json.loads(settings_file.read_text())
         assert "SessionStart" in settings["hooks"]
-        names = [
-            h["name"]
-            for block in settings["hooks"]["SessionStart"]
-            for h in block["hooks"]
-        ]
+        names = [h["name"] for block in settings["hooks"]["SessionStart"] for h in block["hooks"]]
         assert "other-tracing-tool" in names
         assert HOOK_NAME not in names
 
@@ -477,9 +457,7 @@ class TestUninstallPreservesForeign:
         GeminiPlatform(settings_file=settings_file).uninstall()
         settings = json.loads(settings_file.read_text())
         assert "/other/tool" in [
-            h["command"]
-            for block in settings["hooks"]["SessionStart"]
-            for h in block["hooks"]
+            h["command"] for block in settings["hooks"]["SessionStart"] for h in block["hooks"]
         ]
 
 
@@ -494,11 +472,7 @@ class TestResolveCommandAbsolutePath:
         GeminiPlatform(settings_file=settings_file).install()
         settings = json.loads(settings_file.read_text())
         for event, script in HOOK_EVENTS.items():
-            cmds = [
-                h["command"]
-                for block in settings["hooks"][event]
-                for h in block["hooks"]
-            ]
+            cmds = [h["command"] for block in settings["hooks"][event] for h in block["hooks"]]
             assert cmds == [f"/usr/local/bin/{script}"]
 
     def test_install_falls_back_to_bare_name_when_which_fails(self, tmp_path: Path, monkeypatch):
@@ -507,11 +481,7 @@ class TestResolveCommandAbsolutePath:
         GeminiPlatform(settings_file=settings_file).install()
         settings = json.loads(settings_file.read_text())
         for event, script in HOOK_EVENTS.items():
-            cmds = [
-                h["command"]
-                for block in settings["hooks"][event]
-                for h in block["hooks"]
-            ]
+            cmds = [h["command"] for block in settings["hooks"][event] for h in block["hooks"]]
             assert cmds == [script]
 
     def test_uninstall_removes_absolute_path_hooks(self, tmp_path: Path, monkeypatch):

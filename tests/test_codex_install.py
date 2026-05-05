@@ -273,7 +273,9 @@ class TestUninstallRemovesNotify:
         text = config_file.read_text() if config_file.exists() else ""
         if text.strip():
             data = _toml_read.loads(text)
-            assert "notify" not in data or "thirdeye-codex-notify" not in str(data.get("notify", []))
+            assert "notify" not in data or "thirdeye-codex-notify" not in str(
+                data.get("notify", [])
+            )
         # If file is empty or gone, that's fine too
 
     def test_leaves_other_entries_alone(self, tmp_path: Path, monkeypatch):

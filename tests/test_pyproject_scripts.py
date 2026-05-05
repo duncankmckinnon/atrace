@@ -86,9 +86,9 @@ class TestPyprojectScriptEntries:
                 if "=" in stripped and stripped and not stripped.startswith("#"):
                     count += 1
         # 2 (thirdeye + thrdi) + 10 claude + 1 codex + 8 gemini = 21
-        assert count == 21, (
-            f"Expected 21 script entries (thirdeye + thrdi + 10 claude + 1 codex + 8 gemini), got {count}"
-        )
+        assert (
+            count == 21
+        ), f"Expected 21 script entries (thirdeye + thrdi + 10 claude + 1 codex + 8 gemini), got {count}"
 
 
 class TestConsoleScriptsRegistered:
@@ -101,9 +101,9 @@ class TestConsoleScriptsRegistered:
     @pytest.mark.parametrize("script_name,target", list(ALL_EXPECTED_SCRIPTS.items()))
     def test_entrypoint_registered(self, script_name, target):
         scripts = self._get_thirdeye_console_scripts()
-        assert script_name in scripts, (
-            f"{script_name} not in registered console_scripts: {sorted(scripts.keys())}"
-        )
+        assert (
+            script_name in scripts
+        ), f"{script_name} not in registered console_scripts: {sorted(scripts.keys())}"
         assert scripts[script_name] == target
 
     def test_all_hooks_registered(self):
@@ -115,9 +115,9 @@ class TestConsoleScriptsRegistered:
     def test_total_thirdeye_entrypoints(self):
         scripts = self._get_thirdeye_console_scripts()
         # thirdeye + 10 claude + 1 codex + 8 gemini = 20 (thrdi not prefixed)
-        assert len(scripts) == 20, (
-            f"Expected 20 thirdeye-* console scripts, got {len(scripts)}: {sorted(scripts.keys())}"
-        )
+        assert (
+            len(scripts) == 20
+        ), f"Expected 20 thirdeye-* console scripts, got {len(scripts)}: {sorted(scripts.keys())}"
 
 
 class TestScriptNamesMatchConstants:
@@ -131,9 +131,9 @@ class TestScriptNamesMatchConstants:
 
     @pytest.mark.parametrize("event,script_name", list(HOOK_EVENTS.items()))
     def test_each_hook_event_maps_to_expected_script(self, event, script_name):
-        assert script_name in EXPECTED_SCRIPTS, (
-            f"HOOK_EVENTS[{event!r}] = {script_name!r} not in expected scripts"
-        )
+        assert (
+            script_name in EXPECTED_SCRIPTS
+        ), f"HOOK_EVENTS[{event!r}] = {script_name!r} not in expected scripts"
 
 
 class TestEntryPointFunctionsCallable:
@@ -160,9 +160,9 @@ class TestEntryPointFunctionsCallable:
             if p.default is inspect.Parameter.empty
             and p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
         ]
-        assert len(required) == 0, (
-            f"{target} requires {len(required)} args, but console scripts call with no args"
-        )
+        assert (
+            len(required) == 0
+        ), f"{target} requires {len(required)} args, but console scripts call with no args"
 
 
 class TestScriptBinaryExists:
@@ -218,9 +218,9 @@ class TestGeminiScriptNamesMatchConstants:
     @pytest.mark.parametrize("event,script_name", list(GEMINI_HOOK_EVENTS.items()))
     def test_each_gemini_hook_event_maps_to_pyproject_entry(self, event, script_name):
         expected_line = f'{script_name} = "thirdeye.platforms.gemini.hooks:{script_name.removeprefix("thirdeye-gemini-").replace("-", "_")}"'
-        assert expected_line in self.content, (
-            f"GEMINI_HOOK_EVENTS[{event!r}] = {script_name!r} not found in pyproject.toml"
-        )
+        assert (
+            expected_line in self.content
+        ), f"GEMINI_HOOK_EVENTS[{event!r}] = {script_name!r} not found in pyproject.toml"
 
 
 class TestCodexScriptNamesMatchConstants:
@@ -230,9 +230,9 @@ class TestCodexScriptNamesMatchConstants:
         self.content = (ROOT / "pyproject.toml").read_text()
 
     def test_notify_bin_name_in_project_scripts(self):
-        assert NOTIFY_BIN_NAME in self.content, (
-            f"NOTIFY_BIN_NAME={NOTIFY_BIN_NAME!r} not found in pyproject.toml"
-        )
+        assert (
+            NOTIFY_BIN_NAME in self.content
+        ), f"NOTIFY_BIN_NAME={NOTIFY_BIN_NAME!r} not found in pyproject.toml"
 
     def test_notify_bin_name_points_to_codex_hooks(self):
         assert f'{NOTIFY_BIN_NAME} = "thirdeye.platforms.codex.hooks:notify"' in self.content
@@ -250,9 +250,9 @@ class TestTomliDependency:
     def test_tomli_has_python_version_marker(self):
         # Match tomli with python_version < "3.11" marker, flexible on whitespace/quoting
         pattern = r'tomli[^"]*python_version\s*<\s*["\']3\.11["\']'
-        assert re.search(pattern, self.content), (
-            "tomli dependency missing python_version < '3.11' marker"
-        )
+        assert re.search(
+            pattern, self.content
+        ), "tomli dependency missing python_version < '3.11' marker"
 
     def test_tomli_in_project_dependencies_section(self):
         in_deps = False
