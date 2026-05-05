@@ -208,7 +208,7 @@ def test_platforms_dict_has_claude():
 
 def test_platform_flag_value_maps_to_platforms_key():
     for key, cls in PLATFORMS.items():
-        instance = cls(settings_file=Path("/fake"))
+        instance = cls()
         assert instance.name == key
 
 
