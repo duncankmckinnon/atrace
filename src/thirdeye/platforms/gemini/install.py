@@ -94,4 +94,8 @@ class GeminiPlatform(Platform):
         if not hooks:
             del settings["hooks"]
 
+        if not settings:
+            self._settings_file.unlink(missing_ok=True)
+            return
+
         _save(self._settings_file, settings)
