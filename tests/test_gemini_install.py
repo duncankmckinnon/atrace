@@ -308,6 +308,7 @@ class TestInstallEdgeCases:
 class TestUninstallRemovesHooks:
     def test_removes_all_our_hooks(self, tmp_path: Path):
         settings_file = tmp_path / "settings.json"
+        settings_file.write_text(json.dumps({"theme": "dark"}))
         p = GeminiPlatform(settings_file=settings_file)
         p.install()
         p.uninstall()
@@ -317,6 +318,7 @@ class TestUninstallRemovesHooks:
 
     def test_drops_empty_event_keys(self, tmp_path: Path):
         settings_file = tmp_path / "settings.json"
+        settings_file.write_text(json.dumps({"theme": "dark"}))
         p = GeminiPlatform(settings_file=settings_file)
         p.install()
         p.uninstall()
@@ -326,6 +328,7 @@ class TestUninstallRemovesHooks:
 
     def test_drops_empty_hooks_key(self, tmp_path: Path):
         settings_file = tmp_path / "settings.json"
+        settings_file.write_text(json.dumps({"theme": "dark"}))
         p = GeminiPlatform(settings_file=settings_file)
         p.install()
         p.uninstall()
