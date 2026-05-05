@@ -1,0 +1,607 @@
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import pytest
+
+# Use tomllib (3.11+) or tomli (3.10) for verifying written TOML
+if sys.version_info >= (3, 11):
+    import tomllib as _toml_read
+else:
+    import tomli as _toml_read
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+SAMPLE_TOML_WITH_SECTIONS = """\
+[otel.exporter.otlp-http]
+endpoint = 'https://example.com/v1/traces'
+
+[marketplaces.x]
+url = "https://marketplace.example.com"
+
+[plugins."my-plugin"]
+enabled = true
+version = "1.2.3"
+"""
+
+SAMPLE_TOML_WITH_NOTIFY = """\
+notify = ['/some/other/tool']
+
+[otel.exporter.otlp-http]
+endpoint = 'https://example.com/v1/traces'
+"""
+
+
+# ---------------------------------------------------------------------------
+# TestCodexPlatformAttributes
+# ---------------------------------------------------------------------------
+
+
+class TestCodexPlatformAttributes:
+    def test_name_is_codex(self):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        p = CodexPlatform(config_file=Path("/fake/config.toml"))
+        assert p.name == "codex"
+
+    def test_display_name(self):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        p = CodexPlatform(config_file=Path("/fake/config.toml"))
+        assert p.display_name == "Codex CLI"
+
+    def test_is_platform_subclass(self):
+        from thirdeye.platforms.base import Platform
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        assert issubclass(CodexPlatform, Platform)
+
+    def test_default_config_file_matches_constants(self):
+        from thirdeye.platforms.codex.constants import CODEX_CONFIG_FILE
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        p = CodexPlatform()
+        assert p._config_file == CODEX_CONFIG_FILE
+
+
+# ---------------------------------------------------------------------------
+# TestInstallFreshFile
+# ---------------------------------------------------------------------------
+
+
+class TestInstallFreshFile:
+    def test_writes_notify_array(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        CodexPlatform(config_file=config_file).install()
+        assert config_file.exists()
+        data = _toml_read.loads(config_file.read_text())
+        assert "notify" in data
+        assert isinstance(data["notify"], list)
+        assert len(data["notify"]) == 1
+        assert "thirdeye-codex-notify" in data["notify"][0]
+
+    def test_creates_parent_dir(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "nested" / "deeper" / "config.toml"
+        CodexPlatform(config_file=config_file).install()
+        assert config_file.exists()
+
+    def test_file_ends_with_newline(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        CodexPlatform(config_file=config_file).install()
+        assert config_file.read_text().endswith("\n")
+
+    def test_written_file_is_valid_toml(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        CodexPlatform(config_file=config_file).install()
+        # Should not raise
+        _toml_read.loads(config_file.read_text())
+
+
+# ---------------------------------------------------------------------------
+# TestInstallExistingNoNotify
+# ---------------------------------------------------------------------------
+
+
+class TestInstallExistingNoNotify:
+    def test_adds_notify_line(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(SAMPLE_TOML_WITH_SECTIONS)
+        CodexPlatform(config_file=config_file).install()
+        data = _toml_read.loads(config_file.read_text())
+        assert "notify" in data
+        assert "thirdeye-codex-notify" in data["notify"][0]
+
+    def test_preserves_otel_section(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(SAMPLE_TOML_WITH_SECTIONS)
+        CodexPlatform(config_file=config_file).install()
+        data = _toml_read.loads(config_file.read_text())
+        assert "otel" in data
+        assert data["otel"]["exporter"]["otlp-http"]["endpoint"] == "https://example.com/v1/traces"
+
+    def test_preserves_marketplaces_section(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(SAMPLE_TOML_WITH_SECTIONS)
+        CodexPlatform(config_file=config_file).install()
+        data = _toml_read.loads(config_file.read_text())
+        assert "marketplaces" in data
+        assert data["marketplaces"]["x"]["url"] == "https://marketplace.example.com"
+
+    def test_preserves_plugins_section(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(SAMPLE_TOML_WITH_SECTIONS)
+        CodexPlatform(config_file=config_file).install()
+        data = _toml_read.loads(config_file.read_text())
+        assert "plugins" in data
+        assert data["plugins"]["my-plugin"]["enabled"] is True
+
+
+# ---------------------------------------------------------------------------
+# TestInstallExistingNotify
+# ---------------------------------------------------------------------------
+
+
+class TestInstallExistingNotify:
+    def test_appends_to_existing_notify_array(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(SAMPLE_TOML_WITH_NOTIFY)
+        CodexPlatform(config_file=config_file).install()
+        data = _toml_read.loads(config_file.read_text())
+        assert "/some/other/tool" in data["notify"]
+        assert any("thirdeye-codex-notify" in item for item in data["notify"])
+
+    def test_preserves_existing_entry(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(SAMPLE_TOML_WITH_NOTIFY)
+        CodexPlatform(config_file=config_file).install()
+        data = _toml_read.loads(config_file.read_text())
+        assert data["notify"][0] == "/some/other/tool"
+
+    def test_preserves_other_content(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(SAMPLE_TOML_WITH_NOTIFY)
+        CodexPlatform(config_file=config_file).install()
+        data = _toml_read.loads(config_file.read_text())
+        assert data["otel"]["exporter"]["otlp-http"]["endpoint"] == "https://example.com/v1/traces"
+
+
+# ---------------------------------------------------------------------------
+# TestInstallIdempotent
+# ---------------------------------------------------------------------------
+
+
+class TestInstallIdempotent:
+    def test_no_duplicate_on_second_install(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        p.install()
+        data = _toml_read.loads(config_file.read_text())
+        notify_entries = [x for x in data["notify"] if "thirdeye-codex-notify" in x]
+        assert len(notify_entries) == 1
+
+    def test_byte_identical_after_double_install(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        first = config_file.read_bytes()
+        p.install()
+        second = config_file.read_bytes()
+        assert first == second
+
+    def test_idempotent_with_existing_notify(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(SAMPLE_TOML_WITH_NOTIFY)
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        first = config_file.read_bytes()
+        p.install()
+        second = config_file.read_bytes()
+        assert first == second
+
+    def test_triple_install_no_duplicates(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        p.install()
+        p.install()
+        data = _toml_read.loads(config_file.read_text())
+        assert len(data["notify"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# TestUninstallRemovesNotify
+# ---------------------------------------------------------------------------
+
+
+class TestUninstallRemovesNotify:
+    def test_removes_our_entry(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        p.uninstall()
+        text = config_file.read_text() if config_file.exists() else ""
+        if text.strip():
+            data = _toml_read.loads(text)
+            assert "notify" not in data or "thirdeye-codex-notify" not in str(data.get("notify", []))
+        # If file is empty or gone, that's fine too
+
+    def test_leaves_other_entries_alone(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(SAMPLE_TOML_WITH_NOTIFY)
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        p.uninstall()
+        data = _toml_read.loads(config_file.read_text())
+        assert "/some/other/tool" in data["notify"]
+
+    def test_drops_notify_line_entirely_when_empty(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        p.uninstall()
+        text = config_file.read_text() if config_file.exists() else ""
+        assert "notify" not in text
+
+    def test_deletes_file_if_becomes_empty(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        p.uninstall()
+        # File should be deleted or contain only whitespace
+        if config_file.exists():
+            assert config_file.read_text().strip() == ""
+
+
+# ---------------------------------------------------------------------------
+# TestUninstallEdgeCases
+# ---------------------------------------------------------------------------
+
+
+class TestUninstallEdgeCases:
+    def test_file_does_not_exist_is_noop(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        # Don't create the file
+        CodexPlatform(config_file=config_file).uninstall()
+        assert not config_file.exists()
+
+    def test_file_empty_is_noop(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text("")
+        CodexPlatform(config_file=config_file).uninstall()
+        # Should not raise, file stays as-is or is removed
+
+    def test_file_has_only_foreign_notify_entries_is_noop(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text("notify = ['/some/other/tool', '/another/tool']\n")
+        CodexPlatform(config_file=config_file).uninstall()
+        data = _toml_read.loads(config_file.read_text())
+        assert data["notify"] == ["/some/other/tool", "/another/tool"]
+
+    def test_uninstall_idempotent(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        p.uninstall()
+        p.uninstall()  # Second uninstall should not error
+
+    def test_uninstall_no_notify_line_is_noop(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(SAMPLE_TOML_WITH_SECTIONS)
+        original = config_file.read_text()
+        CodexPlatform(config_file=config_file).uninstall()
+        assert config_file.read_text() == original
+
+
+# ---------------------------------------------------------------------------
+# TestResolveCommandAbsolutePath
+# ---------------------------------------------------------------------------
+
+
+class TestResolveCommandAbsolutePath:
+    def test_install_uses_absolute_path_when_which_resolves(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr(
+            "thirdeye.platforms.codex.install.shutil.which",
+            lambda name: f"/usr/local/bin/{name}",
+        )
+        config_file = tmp_path / "config.toml"
+        CodexPlatform(config_file=config_file).install()
+        data = _toml_read.loads(config_file.read_text())
+        assert data["notify"] == ["/usr/local/bin/thirdeye-codex-notify"]
+
+    def test_install_falls_back_to_bare_name_when_which_fails(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        CodexPlatform(config_file=config_file).install()
+        data = _toml_read.loads(config_file.read_text())
+        assert data["notify"] == ["thirdeye-codex-notify"]
+
+    def test_uninstall_removes_absolute_path_variant(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr(
+            "thirdeye.platforms.codex.install.shutil.which",
+            lambda name: f"/usr/local/bin/{name}",
+        )
+        config_file = tmp_path / "config.toml"
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        p.uninstall()
+        text = config_file.read_text() if config_file.exists() else ""
+        assert "/usr/local/bin/thirdeye-codex-notify" not in text
+
+    def test_uninstall_removes_bare_name_variant(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        # Install with bare name
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        # Now uninstall with which resolving (should still remove bare-name entry)
+        monkeypatch.setattr(
+            "thirdeye.platforms.codex.install.shutil.which",
+            lambda name: f"/usr/local/bin/{name}",
+        )
+        p.uninstall()
+        text = config_file.read_text() if config_file.exists() else ""
+        assert "thirdeye-codex-notify" not in text
+
+    def test_uninstall_removes_both_variants_if_present(self, tmp_path: Path, monkeypatch):
+        """If somehow both bare and absolute path ended up in notify, both are removed."""
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(
+            "notify = ['thirdeye-codex-notify', '/usr/local/bin/thirdeye-codex-notify',"
+            " '/some/other/tool']\n"
+        )
+        monkeypatch.setattr(
+            "thirdeye.platforms.codex.install.shutil.which",
+            lambda name: f"/usr/local/bin/{name}",
+        )
+        CodexPlatform(config_file=config_file).uninstall()
+        data = _toml_read.loads(config_file.read_text())
+        assert data["notify"] == ["/some/other/tool"]
+
+    def test_idempotent_with_absolute_paths(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr(
+            "thirdeye.platforms.codex.install.shutil.which",
+            lambda name: f"/opt/bin/{name}",
+        )
+        config_file = tmp_path / "config.toml"
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        first = config_file.read_bytes()
+        p.install()
+        second = config_file.read_bytes()
+        assert first == second
+
+
+# ---------------------------------------------------------------------------
+# TestPreservesNonNotifyContent
+# ---------------------------------------------------------------------------
+
+
+class TestPreservesNonNotifyContent:
+    def test_install_preserves_all_sections(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(SAMPLE_TOML_WITH_SECTIONS)
+        CodexPlatform(config_file=config_file).install()
+        text = config_file.read_text()
+        data = _toml_read.loads(text)
+        # All original sections preserved
+        assert data["otel"]["exporter"]["otlp-http"]["endpoint"] == "https://example.com/v1/traces"
+        assert data["marketplaces"]["x"]["url"] == "https://marketplace.example.com"
+        assert data["plugins"]["my-plugin"]["enabled"] is True
+        assert data["plugins"]["my-plugin"]["version"] == "1.2.3"
+
+    def test_uninstall_preserves_all_sections(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(SAMPLE_TOML_WITH_SECTIONS)
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        p.uninstall()
+        text = config_file.read_text()
+        data = _toml_read.loads(text)
+        assert data["otel"]["exporter"]["otlp-http"]["endpoint"] == "https://example.com/v1/traces"
+        assert data["marketplaces"]["x"]["url"] == "https://marketplace.example.com"
+        assert data["plugins"]["my-plugin"]["enabled"] is True
+        assert data["plugins"]["my-plugin"]["version"] == "1.2.3"
+
+    def test_install_uninstall_roundtrip_no_section_changes(self, tmp_path: Path, monkeypatch):
+        """After install+uninstall, no section content changed except the notify line."""
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(SAMPLE_TOML_WITH_SECTIONS)
+        original_data = _toml_read.loads(config_file.read_text())
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        p.uninstall()
+        final_data = _toml_read.loads(config_file.read_text())
+        # Remove notify key from comparison if present
+        original_data.pop("notify", None)
+        final_data.pop("notify", None)
+        assert original_data == final_data
+
+    def test_preserves_content_with_existing_notify(self, tmp_path: Path, monkeypatch):
+        from thirdeye.platforms.codex.install import CodexPlatform
+
+        monkeypatch.setattr("thirdeye.platforms.codex.install.shutil.which", lambda _: None)
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(SAMPLE_TOML_WITH_NOTIFY)
+        p = CodexPlatform(config_file=config_file)
+        p.install()
+        p.uninstall()
+        data = _toml_read.loads(config_file.read_text())
+        # Original notify entry should remain
+        assert "/some/other/tool" in data["notify"]
+        # OTel section still there
+        assert data["otel"]["exporter"]["otlp-http"]["endpoint"] == "https://example.com/v1/traces"
+
+
+# ---------------------------------------------------------------------------
+# TestHelpers - _parse_notify_array and _format_notify_array
+# ---------------------------------------------------------------------------
+
+
+class TestParseNotifyArray:
+    def test_parses_single_quoted_strings(self):
+        from thirdeye.platforms.codex.install import _parse_notify_array
+
+        result = _parse_notify_array("['hello', 'world']")
+        assert result == ["hello", "world"]
+
+    def test_parses_double_quoted_strings(self):
+        from thirdeye.platforms.codex.install import _parse_notify_array
+
+        result = _parse_notify_array('["hello", "world"]')
+        assert result == ["hello", "world"]
+
+    def test_parses_mixed_quotes(self):
+        from thirdeye.platforms.codex.install import _parse_notify_array
+
+        result = _parse_notify_array("""['single', "double"]""")
+        assert result == ["single", "double"]
+
+    def test_parses_empty_array(self):
+        from thirdeye.platforms.codex.install import _parse_notify_array
+
+        result = _parse_notify_array("[]")
+        assert result == []
+
+    def test_parses_paths_with_slashes(self):
+        from thirdeye.platforms.codex.install import _parse_notify_array
+
+        result = _parse_notify_array("['/usr/local/bin/tool', '/opt/bin/other']")
+        assert result == ["/usr/local/bin/tool", "/opt/bin/other"]
+
+    def test_parses_no_space_between_items(self):
+        from thirdeye.platforms.codex.install import _parse_notify_array
+
+        result = _parse_notify_array("['a','b','c']")
+        assert result == ["a", "b", "c"]
+
+
+class TestFormatNotifyArray:
+    def test_formats_single_item(self):
+        from thirdeye.platforms.codex.install import _format_notify_array
+
+        result = _format_notify_array(["thirdeye-codex-notify"])
+        assert result == "notify = ['thirdeye-codex-notify']"
+
+    def test_formats_multiple_items(self):
+        from thirdeye.platforms.codex.install import _format_notify_array
+
+        result = _format_notify_array(["/some/tool", "thirdeye-codex-notify"])
+        assert result == "notify = ['/some/tool', 'thirdeye-codex-notify']"
+
+    def test_formats_empty_list(self):
+        from thirdeye.platforms.codex.install import _format_notify_array
+
+        result = _format_notify_array([])
+        assert result == "notify = []"
+
+    def test_output_is_valid_toml(self):
+        from thirdeye.platforms.codex.install import _format_notify_array
+
+        result = _format_notify_array(["/usr/local/bin/thirdeye-codex-notify"])
+        # Add newline for valid TOML doc
+        data = _toml_read.loads(result + "\n")
+        assert data["notify"] == ["/usr/local/bin/thirdeye-codex-notify"]
+
+    def test_escapes_single_quotes_in_values(self):
+        from thirdeye.platforms.codex.install import _format_notify_array
+
+        result = _format_notify_array(["it's a test"])
+        assert "\\'" in result or "it's a test" not in result
