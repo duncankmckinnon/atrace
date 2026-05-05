@@ -8,6 +8,8 @@ from click.testing import CliRunner
 from thirdeye.cli import main
 from thirdeye.commands.add import PLATFORMS
 from thirdeye.platforms.claude.install import ClaudePlatform
+from thirdeye.platforms.codex.install import CodexPlatform
+from thirdeye.platforms.gemini.install import GeminiPlatform
 
 # -- command registration ------------------------------------------------------
 
@@ -268,3 +270,220 @@ def test_add_claude_hook_commands_contain_thirdeye(tmp_path: Path, monkeypatch):
             for hook in entry["hooks"]:
                 cmd = hook["command"]
                 assert "thirdeye" in cmd, f"{event_name} command {cmd!r} missing 'thirdeye'"
+
+
+# -- PLATFORMS dict: gemini and codex ------------------------------------------
+
+
+def test_platforms_dict_has_gemini():
+    assert "gemini" in PLATFORMS
+    assert PLATFORMS["gemini"] is GeminiPlatform
+
+
+def test_platforms_dict_has_codex():
+    assert "codex" in PLATFORMS
+    assert PLATFORMS["codex"] is CodexPlatform
+
+
+# -- help text lists all platform flags ----------------------------------------
+
+
+def test_add_help_mentions_gemini():
+    r = CliRunner().invoke(main, ["add", "--help"])
+    assert r.exit_code == 0
+    assert "--gemini" in r.output
+
+
+def test_add_help_mentions_codex():
+    r = CliRunner().invoke(main, ["add", "--help"])
+    assert r.exit_code == 0
+    assert "--codex" in r.output
+
+
+def test_remove_help_mentions_gemini():
+    r = CliRunner().invoke(main, ["remove", "--help"])
+    assert r.exit_code == 0
+    assert "--gemini" in r.output
+
+
+def test_remove_help_mentions_codex():
+    r = CliRunner().invoke(main, ["remove", "--help"])
+    assert r.exit_code == 0
+    assert "--codex" in r.output
+
+
+# -- error message lists all three flags ---------------------------------------
+
+
+def test_add_no_flag_error_lists_all_platforms():
+    r = CliRunner().invoke(main, ["add"])
+    assert r.exit_code != 0
+    assert "--claude" in r.output
+    assert "--gemini" in r.output
+    assert "--codex" in r.output
+
+
+def test_remove_no_flag_error_lists_all_platforms():
+    r = CliRunner().invoke(main, ["remove"])
+    assert r.exit_code != 0
+    assert "--claude" in r.output
+    assert "--gemini" in r.output
+    assert "--codex" in r.output
+
+
+# -- install (add --gemini) ----------------------------------------------------
+
+
+def test_add_gemini_calls_install(monkeypatch):
+    from unittest.mock import MagicMock
+
+    mock_platform = MagicMock()
+    mock_platform.display_name = "Gemini CLI"
+    mock_cls = MagicMock(return_value=mock_platform)
+
+    monkeypatch.setitem(PLATFORMS, "gemini", mock_cls)
+    r = CliRunner().invoke(main, ["add", "--gemini"])
+    assert r.exit_code == 0, r.output
+    mock_cls.assert_called_once()
+    mock_platform.install.assert_called_once()
+
+
+def test_add_gemini_writes_settings(tmp_path: Path, monkeypatch):
+    settings = tmp_path / "settings.json"
+    monkeypatch.setitem(PLATFORMS, "gemini", lambda: GeminiPlatform(settings_file=settings))
+    r = CliRunner().invoke(main, ["add", "--gemini"])
+    assert r.exit_code == 0, r.output
+    assert "Installed" in r.output
+    assert "Gemini CLI" in r.output
+    data = json.loads(settings.read_text())
+    assert "hooks" in data
+
+
+def test_add_gemini_registers_all_hook_events(tmp_path: Path, monkeypatch):
+    from thirdeye.platforms.gemini.constants import HOOK_EVENTS
+
+    settings = tmp_path / "settings.json"
+    monkeypatch.setitem(PLATFORMS, "gemini", lambda: GeminiPlatform(settings_file=settings))
+    CliRunner().invoke(main, ["add", "--gemini"])
+    data = json.loads(settings.read_text())
+    assert set(data["hooks"].keys()) == set(HOOK_EVENTS.keys())
+
+
+# -- uninstall (remove --gemini) -----------------------------------------------
+
+
+def test_remove_gemini_calls_uninstall(monkeypatch):
+    from unittest.mock import MagicMock
+
+    mock_platform = MagicMock()
+    mock_platform.display_name = "Gemini CLI"
+    mock_cls = MagicMock(return_value=mock_platform)
+
+    monkeypatch.setitem(PLATFORMS, "gemini", mock_cls)
+    r = CliRunner().invoke(main, ["remove", "--gemini"])
+    assert r.exit_code == 0, r.output
+    mock_cls.assert_called_once()
+    mock_platform.uninstall.assert_called_once()
+
+
+def test_remove_gemini_removes_hooks(tmp_path: Path, monkeypatch):
+    settings = tmp_path / "settings.json"
+    monkeypatch.setitem(PLATFORMS, "gemini", lambda: GeminiPlatform(settings_file=settings))
+    runner = CliRunner()
+    runner.invoke(main, ["add", "--gemini"])
+    r = runner.invoke(main, ["remove", "--gemini"])
+    assert r.exit_code == 0, r.output
+    assert "Removed" in r.output
+    assert "Gemini CLI" in r.output
+
+
+# -- install (add --codex) -----------------------------------------------------
+
+
+def test_add_codex_calls_install(monkeypatch):
+    from unittest.mock import MagicMock
+
+    mock_platform = MagicMock()
+    mock_platform.display_name = "Codex CLI"
+    mock_cls = MagicMock(return_value=mock_platform)
+
+    monkeypatch.setitem(PLATFORMS, "codex", mock_cls)
+    r = CliRunner().invoke(main, ["add", "--codex"])
+    assert r.exit_code == 0, r.output
+    mock_cls.assert_called_once()
+    mock_platform.install.assert_called_once()
+
+
+def test_add_codex_writes_config(tmp_path: Path, monkeypatch):
+    config = tmp_path / "config.toml"
+    monkeypatch.setitem(PLATFORMS, "codex", lambda: CodexPlatform(config_file=config))
+    r = CliRunner().invoke(main, ["add", "--codex"])
+    assert r.exit_code == 0, r.output
+    assert "Installed" in r.output
+    assert "Codex CLI" in r.output
+    text = config.read_text()
+    assert "notify" in text
+    assert "thirdeye" in text
+
+
+# -- uninstall (remove --codex) ------------------------------------------------
+
+
+def test_remove_codex_calls_uninstall(monkeypatch):
+    from unittest.mock import MagicMock
+
+    mock_platform = MagicMock()
+    mock_platform.display_name = "Codex CLI"
+    mock_cls = MagicMock(return_value=mock_platform)
+
+    monkeypatch.setitem(PLATFORMS, "codex", mock_cls)
+    r = CliRunner().invoke(main, ["remove", "--codex"])
+    assert r.exit_code == 0, r.output
+    mock_cls.assert_called_once()
+    mock_platform.uninstall.assert_called_once()
+
+
+def test_remove_codex_removes_notify(tmp_path: Path, monkeypatch):
+    config = tmp_path / "config.toml"
+    monkeypatch.setitem(PLATFORMS, "codex", lambda: CodexPlatform(config_file=config))
+    runner = CliRunner()
+    runner.invoke(main, ["add", "--codex"])
+    r = runner.invoke(main, ["remove", "--codex"])
+    assert r.exit_code == 0, r.output
+    assert "Removed" in r.output
+    assert "Codex CLI" in r.output
+
+
+# -- claude regression ---------------------------------------------------------
+
+
+def test_add_claude_still_works(tmp_path: Path, monkeypatch):
+    """Regression: --claude must still work after adding new platforms."""
+    settings = tmp_path / "settings.json"
+    monkeypatch.setitem(PLATFORMS, "claude", lambda: ClaudePlatform(settings_file=settings))
+    r = CliRunner().invoke(main, ["add", "--claude"])
+    assert r.exit_code == 0, r.output
+    assert "Installed" in r.output
+    assert "Claude Code" in r.output
+
+
+# -- platform flag_value maps to PLATFORMS key ---------------------------------
+
+
+def test_all_platform_flag_values_map_to_platforms_keys():
+    """Every key in PLATFORMS should have a corresponding --flag on the CLI."""
+    for key in PLATFORMS:
+        r = CliRunner().invoke(main, ["add", f"--{key}", "--help"])
+        # If the flag doesn't exist, Click will error before showing help
+        # We just need it not to fail with "no such option"
+        assert "no such option" not in r.output.lower(), f"--{key} flag not registered"
+
+
+def test_gemini_platform_name_matches_key():
+    instance = GeminiPlatform(settings_file=Path("/fake"))
+    assert instance.name == "gemini"
+
+
+def test_codex_platform_name_matches_key():
+    instance = CodexPlatform(config_file=Path("/fake"))
+    assert instance.name == "codex"
