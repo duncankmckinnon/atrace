@@ -24,6 +24,7 @@ dependencies = [
   "msgpack>=1.0",
   "zstandard>=0.22",
   "pyaml>=23.0",
+  "tomli>=2.0;python_version<'3.11'",
 ]
 
 [project.urls]
@@ -43,6 +44,15 @@ thirdeye-claude-stop-failure = "thirdeye.platforms.claude.hooks:stop_failure"
 thirdeye-claude-notification = "thirdeye.platforms.claude.hooks:notification"
 thirdeye-claude-permission-request = "thirdeye.platforms.claude.hooks:permission_request"
 thirdeye-claude-session-end = "thirdeye.platforms.claude.hooks:session_end"
+thirdeye-codex-notify = "thirdeye.platforms.codex.hooks:notify"
+thirdeye-gemini-session-start = "thirdeye.platforms.gemini.hooks:session_start"
+thirdeye-gemini-session-end = "thirdeye.platforms.gemini.hooks:session_end"
+thirdeye-gemini-before-agent = "thirdeye.platforms.gemini.hooks:before_agent"
+thirdeye-gemini-after-agent = "thirdeye.platforms.gemini.hooks:after_agent"
+thirdeye-gemini-before-model = "thirdeye.platforms.gemini.hooks:before_model"
+thirdeye-gemini-after-model = "thirdeye.platforms.gemini.hooks:after_model"
+thirdeye-gemini-before-tool = "thirdeye.platforms.gemini.hooks:before_tool"
+thirdeye-gemini-after-tool = "thirdeye.platforms.gemini.hooks:after_tool"
 
 [build-system]
 requires = ["setuptools>=64", "setuptools-scm>=8", "wheel"]
