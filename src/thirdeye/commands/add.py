@@ -4,20 +4,26 @@ import click
 
 from thirdeye.platforms.base import Platform
 from thirdeye.platforms.claude.install import ClaudePlatform
+from thirdeye.platforms.codex.install import CodexPlatform
+from thirdeye.platforms.gemini.install import GeminiPlatform
 
 PLATFORMS: dict[str, type[Platform]] = {
     "claude": ClaudePlatform,
+    "gemini": GeminiPlatform,
+    "codex": CodexPlatform,
 }
 
 
 def _platform_options(fn):
+    fn = click.option("--codex", "platform_flag", flag_value="codex", help="Codex CLI.")(fn)
+    fn = click.option("--gemini", "platform_flag", flag_value="gemini", help="Gemini CLI.")(fn)
     fn = click.option("--claude", "platform_flag", flag_value="claude", help="Claude Code.")(fn)
     return fn
 
 
 def _resolve_platform(platform_flag: str | None) -> Platform:
     if not platform_flag:
-        raise click.UsageError("Pick a platform: --claude")
+        raise click.UsageError("Pick a platform: --claude, --gemini, --codex")
     return PLATFORMS[platform_flag]()
 
 
