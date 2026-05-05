@@ -52,7 +52,7 @@ ALL_EXPECTED_SCRIPTS: dict[str, str] = {
 
 
 class TestPyprojectScriptEntries:
-    """Verify pyproject.toml declares all 10 Claude hook scripts."""
+    """Verify pyproject.toml declares all console script entries (Claude, Codex, Gemini)."""
 
     def setup_method(self):
         self.content = (ROOT / "pyproject.toml").read_text()
@@ -92,13 +92,13 @@ class TestPyprojectScriptEntries:
 
 
 class TestConsoleScriptsRegistered:
-    """Verify installed metadata exposes the Claude hook entry points."""
+    """Verify installed metadata exposes all console script entry points."""
 
     def _get_thirdeye_console_scripts(self) -> dict[str, str]:
         eps = importlib.metadata.entry_points(group="console_scripts")
         return {ep.name: ep.value for ep in eps if ep.name.startswith("thirdeye")}
 
-    @pytest.mark.parametrize("script_name,target", list(EXPECTED_SCRIPTS.items()))
+    @pytest.mark.parametrize("script_name,target", list(ALL_EXPECTED_SCRIPTS.items()))
     def test_entrypoint_registered(self, script_name, target):
         scripts = self._get_thirdeye_console_scripts()
         assert script_name in scripts, (
@@ -106,9 +106,9 @@ class TestConsoleScriptsRegistered:
         )
         assert scripts[script_name] == target
 
-    def test_all_ten_hooks_registered(self):
+    def test_all_hooks_registered(self):
         scripts = self._get_thirdeye_console_scripts()
-        for name, target in EXPECTED_SCRIPTS.items():
+        for name, target in ALL_EXPECTED_SCRIPTS.items():
             assert name in scripts
             assert scripts[name] == target
 
@@ -139,14 +139,14 @@ class TestScriptNamesMatchConstants:
 class TestEntryPointFunctionsCallable:
     """Verify each script target resolves to a callable function."""
 
-    @pytest.mark.parametrize("script_name,target", list(EXPECTED_SCRIPTS.items()))
+    @pytest.mark.parametrize("script_name,target", list(ALL_EXPECTED_SCRIPTS.items()))
     def test_target_function_importable(self, script_name, target):
         module_path, func_name = target.rsplit(":", 1)
         mod = importlib.import_module(module_path)
         fn = getattr(mod, func_name)
         assert callable(fn), f"{target} is not callable"
 
-    @pytest.mark.parametrize("script_name,target", list(EXPECTED_SCRIPTS.items()))
+    @pytest.mark.parametrize("script_name,target", list(ALL_EXPECTED_SCRIPTS.items()))
     def test_target_function_takes_no_args(self, script_name, target):
         import inspect
 
@@ -168,7 +168,7 @@ class TestEntryPointFunctionsCallable:
 class TestScriptBinaryExists:
     """Verify script binaries are installed and resolvable on PATH."""
 
-    @pytest.mark.parametrize("script_name", list(EXPECTED_SCRIPTS.keys()))
+    @pytest.mark.parametrize("script_name", list(ALL_EXPECTED_SCRIPTS.keys()))
     def test_script_binary_in_venv(self, script_name):
         assert shutil.which(script_name) is not None, f"Script {script_name} not found on PATH"
 
@@ -185,9 +185,6 @@ class TestCodexScriptEntries:
     def test_codex_notify_declared_in_pyproject(self):
         expected_line = 'thirdeye-codex-notify = "thirdeye.platforms.codex.hooks:notify"'
         assert expected_line in self.content, f"Missing script entry: {expected_line}"
-
-    def test_notify_bin_name_constant_matches_pyproject(self):
-        assert f'{NOTIFY_BIN_NAME} = "thirdeye.platforms.codex.hooks:notify"' in self.content
 
 
 class TestGeminiScriptEntries:
@@ -224,12 +221,6 @@ class TestGeminiScriptNamesMatchConstants:
         assert expected_line in self.content, (
             f"GEMINI_HOOK_EVENTS[{event!r}] = {script_name!r} not found in pyproject.toml"
         )
-
-    def test_every_gemini_hook_event_value_in_project_scripts(self):
-        for event, script_name in GEMINI_HOOK_EVENTS.items():
-            assert script_name in self.content, (
-                f"GEMINI_HOOK_EVENTS[{event!r}] = {script_name!r} missing from [project.scripts]"
-            )
 
 
 class TestCodexScriptNamesMatchConstants:
