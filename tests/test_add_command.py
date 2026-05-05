@@ -487,3 +487,22 @@ def test_gemini_platform_name_matches_key():
 def test_codex_platform_name_matches_key():
     instance = CodexPlatform(config_file=Path("/fake"))
     assert instance.name == "codex"
+
+
+# -- mutual exclusivity: last flag wins ----------------------------------------
+
+
+def test_add_multiple_platform_flags_last_wins(monkeypatch):
+    """Passing two platform flags: last flag wins (Click flag_value behavior)."""
+    from unittest.mock import MagicMock
+
+    mock_platform = MagicMock()
+    mock_platform.display_name = "Gemini CLI"
+    mock_cls = MagicMock(return_value=mock_platform)
+
+    monkeypatch.setitem(PLATFORMS, "gemini", mock_cls)
+    r = CliRunner().invoke(main, ["add", "--claude", "--gemini"])
+    # Click's flag_value makes the last flag win, so gemini is resolved
+    assert r.exit_code == 0, r.output
+    mock_cls.assert_called_once()
+    mock_platform.install.assert_called_once()
