@@ -3,8 +3,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 # Use tomllib (3.11+) or tomli (3.10) for verifying written TOML
 if sys.version_info >= (3, 11):
     import tomllib as _toml_read
