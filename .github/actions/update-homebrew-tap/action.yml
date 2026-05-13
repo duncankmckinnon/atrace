@@ -1,0 +1,85 @@
+name: Update Homebrew Tap
+description: Updates the Homebrew formula in a tap repo with a new PyPI release version and SHA256.
+
+inputs:
+  version:
+    description: Package version (without leading v)
+    required: true
+  tap-repo:
+    description: GitHub tap repository (owner/repo)
+    default: duncankmckinnon/homebrew-tap
+  formula-name:
+    description: Formula file name (without .rb)
+    default: thirdeye
+  pypi-package:
+    description: PyPI package name
+    default: thrdi
+  tap-token:
+    description: GitHub PAT with contents:write on the tap repository
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Wait for PyPI availability
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        PYPI_PACKAGE: ${{ inputs.pypi-package }}
+      run: |
+        URL="https://files.pythonhosted.org/packages/source/${PYPI_PACKAGE:0:1}/${PYPI_PACKAGE}/${PYPI_PACKAGE}-${VERSION}.tar.gz"
+        echo "Waiting for ${URL} ..."
+        for i in $(seq 1 30); do
+          if curl -sfI "${URL}" >/dev/null 2>&1; then
+            echo "Found on PyPI."
+            exit 0
+          fi
+          echo "  attempt ${i}/30 — retrying in 10s"
+          sleep 10
+        done
+        echo "::error::${PYPI_PACKAGE} ${VERSION} not found on PyPI after 5 minutes"
+        exit 1
+
+    - name: Compute SHA256
+      id: sha
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        PYPI_PACKAGE: ${{ inputs.pypi-package }}
+      run: |
+        URL="https://files.pythonhosted.org/packages/source/${PYPI_PACKAGE:0:1}/${PYPI_PACKAGE}/${PYPI_PACKAGE}-${VERSION}.tar.gz"
+        SHA=$(curl -sL "${URL}" | shasum -a 256 | cut -d' ' -f1)
+        echo "sha256=${SHA}" >> "$GITHUB_OUTPUT"
+        echo "url=${URL}" >> "$GITHUB_OUTPUT"
+        echo "SHA256: ${SHA}"
+
+    - name: Clone tap and update formula
+      shell: bash
+      env:
+        TAP_REPO: ${{ inputs.tap-repo }}
+        TAP_TOKEN: ${{ inputs.tap-token }}
+        FORMULA: ${{ inputs.formula-name }}
+        SHA256: ${{ steps.sha.outputs.sha256 }}
+        TARBALL_URL: ${{ steps.sha.outputs.url }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        WORKDIR=$(mktemp -d)
+        git clone "https://x-access-token:${TAP_TOKEN}@github.com/${TAP_REPO}.git" "${WORKDIR}/tap"
+
+        # Copy formula from this repo, patch in version + sha.
+        # Anchor to 2-space class-level indent so resource blocks (4-space) are not rewritten.
+        DEST="${WORKDIR}/tap/Formula/${FORMULA}.rb"
+        mkdir -p "${WORKDIR}/tap/Formula"
+        cp "${GITHUB_WORKSPACE}/Formula/${FORMULA}.rb" "${DEST}"
+        sed -i "s|^  url \".*\"|  url \"${TARBALL_URL}\"|"   "${DEST}"
+        sed -i "s|^  sha256 \".*\"|  sha256 \"${SHA256}\"|"  "${DEST}"
+
+        cd "${WORKDIR}/tap"
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add "Formula/${FORMULA}.rb"
+        git commit -m "${FORMULA} ${VERSION}"
+        git push origin main
+
+        rm -rf "${WORKDIR}"
+        echo "Tap updated to ${VERSION}"
