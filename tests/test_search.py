@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
+from thirdeye.meta import read_meta, write_meta
+from thirdeye.paths import meta_path, session_dir
 from thirdeye.search import Hit, _snippet, _stringify, search
 from thirdeye.store import Store
+from thirdeye.tags import TagStore
 
 # -- search: basic matching ----------------------------------------------------
 
@@ -254,3 +258,197 @@ class TestHitDataclass:
         h1 = Hit(session_id="A", platform="p", seq=0, t="t", snippet="s")
         h2 = Hit(session_id="B", platform="p", seq=0, t="t", snippet="s")
         assert h1 != h2
+
+
+# -- search: tag filter --------------------------------------------------------
+
+
+def _tag_session(store: Store, platform: str, sid: str, seq: int, tag: str) -> None:
+    sd = session_dir(store.config.root, platform, sid)
+    TagStore(sd).add(seq, tag)
+
+
+class TestSearchTagFilter:
+    def test_single_tag_matches_only_tagged_seq(self, populated_store: Store):
+        # Tag seq=0 in the claude session with "alpha".
+        _tag_session(populated_store, "claude", "01J9G7XK4P", 0, "alpha")
+        hits = list(search(populated_store, "hi", tags={"alpha"}))
+        assert len(hits) == 1
+        assert hits[0].session_id == "01J9G7XK4P"
+        assert hits[0].seq == 0
+
+    def test_multiple_tags_require_all_on_same_event(self, populated_store: Store):
+        _tag_session(populated_store, "claude", "01J9G7XK4P", 0, "alpha")
+        _tag_session(populated_store, "claude", "01J9G7XK4P", 0, "beta")
+        # seq=1 only has "alpha"
+        _tag_session(populated_store, "claude", "01J9G7XK4P", 1, "alpha")
+        hits = list(search(populated_store, "hi", tags={"alpha", "beta"}))
+        assert len(hits) == 1
+        assert hits[0].seq == 0
+
+    def test_tags_with_non_matching_query_returns_empty(self, populated_store: Store):
+        _tag_session(populated_store, "claude", "01J9G7XK4P", 0, "alpha")
+        hits = list(search(populated_store, "nonexistent_xyz", tags={"alpha"}))
+        assert hits == []
+
+    def test_tag_filter_skips_untagged_sessions(self, populated_store: Store):
+        # Tag only the cursor session
+        _tag_session(populated_store, "cursor", "02ABCDEF12", 0, "alpha")
+        hits = list(search(populated_store, "hi", tags={"alpha"}))
+        assert len(hits) == 1
+        assert hits[0].session_id == "02ABCDEF12"
+
+    def test_empty_tags_set_behaves_like_no_filter(self, populated_store: Store):
+        without = list(search(populated_store, "hi"))
+        with_empty = list(search(populated_store, "hi", tags=set()))
+        assert len(without) == len(with_empty) >= 2
+
+    def test_missing_tag_yields_no_hits(self, populated_store: Store):
+        _tag_session(populated_store, "claude", "01J9G7XK4P", 0, "alpha")
+        hits = list(search(populated_store, "hi", tags={"unused"}))
+        assert hits == []
+
+
+# -- search: date filter -------------------------------------------------------
+
+
+def _set_window(store: Store, platform: str, sid: str, started: str, last: str) -> None:
+    mp = meta_path(session_dir(store.config.root, platform, sid))
+    m = read_meta(mp)
+    assert m is not None
+    m.started_at = started
+    m.last_ts = last
+    write_meta(mp, m)
+
+
+class TestSearchDateFilter:
+    def test_since_excludes_older_sessions(self, populated_store: Store):
+        _set_window(
+            populated_store,
+            "claude",
+            "01J9G7XK4P",
+            "2026-01-01T00:00:00.000Z",
+            "2026-01-01T00:01:00.000Z",
+        )
+        _set_window(
+            populated_store,
+            "cursor",
+            "02ABCDEF12",
+            "2026-03-01T00:00:00.000Z",
+            "2026-03-01T00:01:00.000Z",
+        )
+        since = datetime(2026, 2, 1, tzinfo=UTC)
+        hits = list(search(populated_store, "hi", since=since))
+        assert {h.session_id for h in hits} == {"02ABCDEF12"}
+
+    def test_until_excludes_newer_sessions(self, populated_store: Store):
+        _set_window(
+            populated_store,
+            "claude",
+            "01J9G7XK4P",
+            "2026-01-01T00:00:00.000Z",
+            "2026-01-01T00:01:00.000Z",
+        )
+        _set_window(
+            populated_store,
+            "cursor",
+            "02ABCDEF12",
+            "2026-03-01T00:00:00.000Z",
+            "2026-03-01T00:01:00.000Z",
+        )
+        until = datetime(2026, 2, 1, tzinfo=UTC)
+        hits = list(search(populated_store, "hi", until=until))
+        assert {h.session_id for h in hits} == {"01J9G7XK4P"}
+
+    def test_since_and_until_window(self, populated_store: Store):
+        _set_window(
+            populated_store,
+            "claude",
+            "01J9G7XK4P",
+            "2026-01-01T00:00:00.000Z",
+            "2026-01-01T00:01:00.000Z",
+        )
+        _set_window(
+            populated_store,
+            "cursor",
+            "02ABCDEF12",
+            "2026-06-01T00:00:00.000Z",
+            "2026-06-01T00:01:00.000Z",
+        )
+        since = datetime(2026, 2, 1, tzinfo=UTC)
+        until = datetime(2026, 5, 1, tzinfo=UTC)
+        hits = list(search(populated_store, "hi", since=since, until=until))
+        assert hits == []
+
+
+# -- search: all filters combined ----------------------------------------------
+
+
+class TestSearchAllFiltersCombined:
+    def test_platform_cwd_tags_since_all_match(self, populated_store: Store):
+        _set_window(
+            populated_store,
+            "claude",
+            "01J9G7XK4P",
+            "2026-03-01T00:00:00.000Z",
+            "2026-03-01T00:01:00.000Z",
+        )
+        _tag_session(populated_store, "claude", "01J9G7XK4P", 0, "alpha")
+        since = datetime(2026, 2, 1, tzinfo=UTC)
+        hits = list(
+            search(
+                populated_store,
+                "hi",
+                platform="claude",
+                cwd="/proj/a",
+                tags={"alpha"},
+                since=since,
+            )
+        )
+        assert len(hits) == 1
+        assert hits[0].session_id == "01J9G7XK4P"
+        assert hits[0].seq == 0
+
+    def test_platform_cwd_tags_since_mismatch_on_tags(self, populated_store: Store):
+        _set_window(
+            populated_store,
+            "claude",
+            "01J9G7XK4P",
+            "2026-03-01T00:00:00.000Z",
+            "2026-03-01T00:01:00.000Z",
+        )
+        # Don't add any tags.
+        since = datetime(2026, 2, 1, tzinfo=UTC)
+        hits = list(
+            search(
+                populated_store,
+                "hi",
+                platform="claude",
+                cwd="/proj/a",
+                tags={"alpha"},
+                since=since,
+            )
+        )
+        assert hits == []
+
+    def test_platform_cwd_tags_since_mismatch_on_date(self, populated_store: Store):
+        _set_window(
+            populated_store,
+            "claude",
+            "01J9G7XK4P",
+            "2025-01-01T00:00:00.000Z",
+            "2025-01-01T00:01:00.000Z",
+        )
+        _tag_session(populated_store, "claude", "01J9G7XK4P", 0, "alpha")
+        since = datetime(2026, 2, 1, tzinfo=UTC)
+        hits = list(
+            search(
+                populated_store,
+                "hi",
+                platform="claude",
+                cwd="/proj/a",
+                tags={"alpha"},
+                since=since,
+            )
+        )
+        assert hits == []

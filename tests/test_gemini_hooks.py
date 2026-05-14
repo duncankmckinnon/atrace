@@ -258,6 +258,81 @@ class TestBeforeAgent:
         assert "session_id" not in events[1].get("data", {})
 
 
+# -- before_agent hashtag extraction -------------------------------------------
+
+
+class TestBeforeAgentHashtagExtract:
+    def test_extracts_hashtag_from_prompt(self, monkeypatch, env: Path, capsys):
+        _stdin(monkeypatch, {"sessionId": "g1", "prompt": "let's #ship"})
+        hooks.before_agent()
+        store = Store(Config.load())
+        events = list(store.reader("g1").iter_events())
+        assert len(events) == 1
+        assert events[0]["t"] == "user_message"
+
+        from thirdeye.paths import session_dir as _sd
+        from thirdeye.paths import tags_path
+        from thirdeye.tags import TagStore
+
+        sd = _sd(Config.load().root, "gemini", "g1")
+        tag_file = tags_path(sd)
+        assert tag_file.exists()
+        lines = [json.loads(line) for line in tag_file.read_text().splitlines() if line.strip()]
+        assert len(lines) == 1
+        assert lines[0]["tag"] == "ship"
+        assert lines[0]["op"] == "add"
+        assert lines[0]["source"] == "auto"
+
+        ts = TagStore(sd)
+        assert ts.unique_tags() == {"ship"}
+
+        m = next(store.list_sessions())
+        assert m.tag_count == 1
+
+        captured = capsys.readouterr()
+        assert captured.out == "{}\n"
+
+    def test_no_prompt_no_tags(self, monkeypatch, env: Path, capsys):
+        _stdin(monkeypatch, {"sessionId": "g2", "cwd": "/p"})
+        hooks.before_agent()
+
+        from thirdeye.paths import session_dir as _sd
+        from thirdeye.paths import tags_path
+
+        sd = _sd(Config.load().root, "gemini", "g2")
+        assert not tags_path(sd).exists()
+
+        m = next(Store(Config.load()).list_sessions())
+        assert m.tag_count == 0
+
+        captured = capsys.readouterr()
+        assert captured.out == "{}\n"
+
+    def test_malformed_payload_no_crash(self, monkeypatch, env: Path, capsys):
+        monkeypatch.setattr("sys.stdin", io.StringIO("not json"))
+        hooks.before_agent()
+        assert list(Store(Config.load()).list_sessions()) == []
+        captured = capsys.readouterr()
+        assert captured.out == "{}\n"
+
+    def test_extracts_from_alternate_field_name(self, monkeypatch, env: Path, capsys):
+        _stdin(monkeypatch, {"sessionId": "g3", "input": "ship it #fast"})
+        hooks.before_agent()
+
+        from thirdeye.paths import session_dir as _sd
+        from thirdeye.tags import TagStore
+
+        sd = _sd(Config.load().root, "gemini", "g3")
+        ts = TagStore(sd)
+        assert ts.unique_tags() == {"fast"}
+
+        m = next(Store(Config.load()).list_sessions())
+        assert m.tag_count == 1
+
+        captured = capsys.readouterr()
+        assert captured.out == "{}\n"
+
+
 # -- after_agent ---------------------------------------------------------------
 
 

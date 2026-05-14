@@ -249,8 +249,89 @@ class TestSchemaVersion:
     def test_schema_version_is_int(self):
         assert isinstance(SCHEMA_VERSION, int)
 
-    def test_schema_version_is_one(self):
-        assert SCHEMA_VERSION == 1
+    def test_schema_version_is_two(self):
+        assert SCHEMA_VERSION == 2
+
+
+# -- tag_count field -----------------------------------------------------------
+
+
+class TestSessionMetaTagCount:
+    def test_tag_count_defaults_to_zero(self):
+        m = SessionMeta(
+            session_id="X",
+            platform="p",
+            cwd="/",
+            started_at="ts",
+            ended_at=None,
+            status="open",
+            event_count=0,
+            last_seq=-1,
+            last_ts=None,
+        )
+        assert m.tag_count == 0
+
+    def test_tag_count_explicit_value(self):
+        m = _sample(tag_count=5)
+        assert m.tag_count == 5
+
+
+class TestWriteMetaEmitsTagCount:
+    def test_tag_count_written_to_yaml(self, tmp_path: Path):
+        p = tmp_path / "meta.yaml"
+        m = _sample(tag_count=3)
+        write_meta(p, m)
+        with open(p) as f:
+            raw = yaml.safe_load(f)
+        assert raw["tag_count"] == 3
+        assert raw["schema_version"] == 2
+
+
+class TestReadV1Compat:
+    def test_v1_yaml_reads_with_tag_count_zero(self, tmp_path: Path):
+        p = tmp_path / "meta.yaml"
+        data = {
+            "schema_version": 1,
+            "session_id": "01J9G7XK4P",
+            "platform": "claude",
+            "cwd": "/tmp/proj",
+            "started_at": "2026-04-30T17:00:00.000Z",
+            "ended_at": None,
+            "status": "open",
+            "event_count": 0,
+            "last_seq": -1,
+            "last_ts": None,
+            "extra": {},
+        }
+        with open(p, "w") as f:
+            yaml.safe_dump(data, f, sort_keys=False)
+        got = read_meta(p)
+        assert got is not None
+        assert got.tag_count == 0
+
+
+class TestReadV2:
+    def test_v2_yaml_reads_tag_count(self, tmp_path: Path):
+        p = tmp_path / "meta.yaml"
+        data = {
+            "schema_version": 2,
+            "session_id": "01J9G7XK4P",
+            "platform": "claude",
+            "cwd": "/tmp/proj",
+            "started_at": "2026-04-30T17:00:00.000Z",
+            "ended_at": None,
+            "status": "open",
+            "event_count": 0,
+            "last_seq": -1,
+            "last_ts": None,
+            "tag_count": 7,
+            "extra": {},
+        }
+        with open(p, "w") as f:
+            yaml.safe_dump(data, f, sort_keys=False)
+        got = read_meta(p)
+        assert got is not None
+        assert got.tag_count == 7
 
 
 # -- Platform values -----------------------------------------------------------

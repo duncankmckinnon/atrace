@@ -5,7 +5,10 @@ import os
 import sys
 
 from thirdeye.config import Config
+from thirdeye.meta import read_meta, write_meta
+from thirdeye.paths import meta_path, session_dir
 from thirdeye.store import Store
+from thirdeye.tags import TagStore, extract_hashtags
 
 _PLATFORM = "claude"
 
@@ -54,7 +57,35 @@ def session_start() -> None:
 
 
 def user_prompt_submit() -> None:
-    _emit("user_message", _read_stdin())
+    payload = _read_stdin()
+    sid = payload.get("session_id")
+    if not sid:
+        return
+    cwd = payload.get("cwd") or os.getcwd()
+    config = Config.load()
+    seq = Store(config).append_event(
+        session_id=sid,
+        platform=_PLATFORM,
+        cwd=cwd,
+        t="user_message",
+        data=_strip_payload(payload),
+    )
+    try:
+        prompt = payload.get("prompt") or ""
+        tags = extract_hashtags(prompt)
+        if not tags:
+            return
+        sd = session_dir(config.root, _PLATFORM, sid)
+        tagstore = TagStore(sd)
+        for tag in tags:
+            tagstore.add(seq, tag, source="auto")
+        mp = meta_path(sd)
+        m = read_meta(mp)
+        if m is not None:
+            m.tag_count = tagstore.tagged_seq_count()
+            write_meta(mp, m)
+    except Exception:
+        pass
 
 
 def pre_tool_use() -> None:

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 from thirdeye.config import Config
-from thirdeye.meta import SessionMeta
-from thirdeye.paths import session_dir, sessions_root
+from thirdeye.meta import SessionMeta, read_meta, write_meta
+from thirdeye.paths import meta_path, session_dir, sessions_root
 from thirdeye.reader import SessionReader
 from thirdeye.store import Store
+from thirdeye.tags import TagStore
 from thirdeye.writer import SessionWriter
 
 # -- open_session --------------------------------------------------------------
@@ -524,3 +526,212 @@ class TestCloseSession:
         sd = session_dir(tmp_store.config.root, "claude", "ORPHAN")
         sd.mkdir(parents=True)
         tmp_store.close_session("ORPHAN", platform="claude")
+
+
+# -- list_sessions tag filter --------------------------------------------------
+
+
+class TestListSessionsTagFilter:
+    @staticmethod
+    def _setup(tmp_store: Store) -> None:
+        tmp_store.append_event(
+            session_id="TAGGED",
+            platform="claude",
+            cwd="/p",
+            t="user_message",
+            data="hi",
+        )
+        tmp_store.append_event(
+            session_id="UNTAGGED",
+            platform="claude",
+            cwd="/p",
+            t="user_message",
+            data="hi",
+        )
+        sd = session_dir(tmp_store.config.root, "claude", "TAGGED")
+        ts = TagStore(sd)
+        ts.add(0, "alpha")
+        ts.add(0, "beta")
+
+    def test_single_tag_matches(self, tmp_store: Store):
+        self._setup(tmp_store)
+        metas = list(tmp_store.list_sessions(tags={"alpha"}))
+        assert [m.session_id for m in metas] == ["TAGGED"]
+
+    def test_all_required_tags_present(self, tmp_store: Store):
+        self._setup(tmp_store)
+        metas = list(tmp_store.list_sessions(tags={"alpha", "beta"}))
+        assert [m.session_id for m in metas] == ["TAGGED"]
+
+    def test_missing_tag_excludes(self, tmp_store: Store):
+        self._setup(tmp_store)
+        metas = list(tmp_store.list_sessions(tags={"alpha", "gamma"}))
+        assert metas == []
+
+    def test_empty_tag_set_no_filter(self, tmp_store: Store):
+        self._setup(tmp_store)
+        metas = list(tmp_store.list_sessions(tags=set()))
+        assert sorted(m.session_id for m in metas) == ["TAGGED", "UNTAGGED"]
+
+    def test_none_tag_no_filter(self, tmp_store: Store):
+        self._setup(tmp_store)
+        metas = list(tmp_store.list_sessions(tags=None))
+        assert sorted(m.session_id for m in metas) == ["TAGGED", "UNTAGGED"]
+
+
+# -- list_sessions date filter -------------------------------------------------
+
+
+def _set_window(
+    store: Store, sid: str, platform: str, started_at: str, last_ts: str | None
+) -> None:
+    sd = session_dir(store.config.root, platform, sid)
+    mp = meta_path(sd)
+    m = read_meta(mp)
+    assert m is not None
+    m.started_at = started_at
+    m.last_ts = last_ts
+    write_meta(mp, m)
+
+
+class TestListSessionsDateFilter:
+    def _build(self, tmp_store: Store) -> None:
+        tmp_store.append_event(session_id="OLD", platform="claude", cwd="/p", t="x", data=1)
+        tmp_store.append_event(session_id="NEW", platform="claude", cwd="/p", t="x", data=1)
+        _set_window(
+            tmp_store,
+            "OLD",
+            "claude",
+            "2026-01-01T00:00:00.000Z",
+            "2026-01-02T00:00:00.000Z",
+        )
+        _set_window(
+            tmp_store,
+            "NEW",
+            "claude",
+            "2026-03-01T00:00:00.000Z",
+            "2026-03-02T00:00:00.000Z",
+        )
+
+    def test_since_excludes_older(self, tmp_store: Store):
+        self._build(tmp_store)
+        since = datetime(2026, 2, 1, tzinfo=UTC)
+        metas = list(tmp_store.list_sessions(since=since))
+        assert [m.session_id for m in metas] == ["NEW"]
+
+    def test_until_excludes_newer(self, tmp_store: Store):
+        self._build(tmp_store)
+        until = datetime(2026, 2, 1, tzinfo=UTC)
+        metas = list(tmp_store.list_sessions(until=until))
+        assert [m.session_id for m in metas] == ["OLD"]
+
+    def test_since_and_until_require_overlap(self, tmp_store: Store):
+        self._build(tmp_store)
+        since = datetime(2026, 1, 15, tzinfo=UTC)
+        until = datetime(2026, 2, 15, tzinfo=UTC)
+        metas = list(tmp_store.list_sessions(since=since, until=until))
+        assert metas == []
+
+    def test_overlap_at_window_start(self, tmp_store: Store):
+        self._build(tmp_store)
+        since = datetime(2026, 1, 2, tzinfo=UTC)
+        until = datetime(2026, 1, 15, tzinfo=UTC)
+        metas = list(tmp_store.list_sessions(since=since, until=until))
+        assert [m.session_id for m in metas] == ["OLD"]
+
+    def test_last_ts_none_zero_width_window(self, tmp_store: Store):
+        tmp_store.append_event(session_id="EMPTY", platform="claude", cwd="/p", t="x", data=1)
+        _set_window(tmp_store, "EMPTY", "claude", "2026-02-15T00:00:00.000Z", None)
+
+        # Within window
+        since = datetime(2026, 2, 1, tzinfo=UTC)
+        until = datetime(2026, 3, 1, tzinfo=UTC)
+        metas = list(tmp_store.list_sessions(since=since, until=until))
+        assert [m.session_id for m in metas] == ["EMPTY"]
+
+        # Strictly before since
+        since2 = datetime(2026, 3, 1, tzinfo=UTC)
+        metas = list(tmp_store.list_sessions(since=since2))
+        assert metas == []
+
+        # Strictly after until
+        until2 = datetime(2026, 2, 1, tzinfo=UTC)
+        metas = list(tmp_store.list_sessions(until=until2))
+        assert metas == []
+
+
+# -- list_sessions combined filters --------------------------------------------
+
+
+class TestListSessionsCombined:
+    def test_platform_cwd_tags_since(self, tmp_store: Store):
+        # MATCH: claude, /proj/a, tagged, within window
+        tmp_store.append_event(session_id="MATCH", platform="claude", cwd="/proj/a", t="x", data=1)
+        _set_window(
+            tmp_store,
+            "MATCH",
+            "claude",
+            "2026-03-01T00:00:00.000Z",
+            "2026-03-02T00:00:00.000Z",
+        )
+        TagStore(session_dir(tmp_store.config.root, "claude", "MATCH")).add(0, "wanted")
+
+        # WRONG_PLATFORM
+        tmp_store.append_event(
+            session_id="WRONGPLAT", platform="cursor", cwd="/proj/a", t="x", data=1
+        )
+        _set_window(
+            tmp_store,
+            "WRONGPLAT",
+            "cursor",
+            "2026-03-01T00:00:00.000Z",
+            "2026-03-02T00:00:00.000Z",
+        )
+        TagStore(session_dir(tmp_store.config.root, "cursor", "WRONGPLAT")).add(0, "wanted")
+
+        # WRONG_CWD
+        tmp_store.append_event(
+            session_id="WRONGCWD", platform="claude", cwd="/proj/b", t="x", data=1
+        )
+        _set_window(
+            tmp_store,
+            "WRONGCWD",
+            "claude",
+            "2026-03-01T00:00:00.000Z",
+            "2026-03-02T00:00:00.000Z",
+        )
+        TagStore(session_dir(tmp_store.config.root, "claude", "WRONGCWD")).add(0, "wanted")
+
+        # UNTAGGED
+        tmp_store.append_event(
+            session_id="UNTAGGED", platform="claude", cwd="/proj/a", t="x", data=1
+        )
+        _set_window(
+            tmp_store,
+            "UNTAGGED",
+            "claude",
+            "2026-03-01T00:00:00.000Z",
+            "2026-03-02T00:00:00.000Z",
+        )
+
+        # TOO_OLD
+        tmp_store.append_event(session_id="TOOOLD", platform="claude", cwd="/proj/a", t="x", data=1)
+        _set_window(
+            tmp_store,
+            "TOOOLD",
+            "claude",
+            "2026-01-01T00:00:00.000Z",
+            "2026-01-02T00:00:00.000Z",
+        )
+        TagStore(session_dir(tmp_store.config.root, "claude", "TOOOLD")).add(0, "wanted")
+
+        since = datetime(2026, 2, 1, tzinfo=UTC)
+        metas = list(
+            tmp_store.list_sessions(
+                platform="claude",
+                cwd="/proj/a",
+                tags={"wanted"},
+                since=since,
+            )
+        )
+        assert [m.session_id for m in metas] == ["MATCH"]

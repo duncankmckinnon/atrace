@@ -23,3 +23,7 @@ def index_path(session_dir_: Path) -> Path:
 
 def meta_path(session_dir_: Path) -> Path:
     return session_dir_ / "meta.yaml"
+
+
+def tags_path(session_dir_: Path) -> Path:
+    return session_dir_ / "tags.jsonl"

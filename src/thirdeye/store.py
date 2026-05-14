@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from datetime import datetime
 from typing import Any
 
 from thirdeye.config import Config
@@ -15,7 +16,19 @@ from thirdeye.paths import (
     session_dir as _session_dir,
 )
 from thirdeye.reader import SessionReader
+from thirdeye.tags import TagStore
 from thirdeye.writer import SessionWriter, utc_iso_ms
+
+
+def _parse_iso(s: str | None) -> datetime | None:
+    if not s:
+        return None
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(s)
+    except ValueError:
+        return None
 
 
 class Store:
@@ -41,6 +54,9 @@ class Store:
         platform: str | None = None,
         cwd: str | None = None,
         status: str | None = None,
+        tags: set[str] | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
     ) -> Iterator[SessionMeta]:
         root = sessions_root(self.config.root)
         if not root.exists():
@@ -60,6 +76,18 @@ class Store:
                     continue
                 if status is not None and m.status != status:
                     continue
+                if since is not None:
+                    end = _parse_iso(m.last_ts) or _parse_iso(m.started_at)
+                    if end is not None and end < since:
+                        continue
+                if until is not None:
+                    start = _parse_iso(m.started_at)
+                    if start is not None and start > until:
+                        continue
+                if tags:
+                    session_tags = TagStore(sd).unique_tags()
+                    if not tags.issubset(session_tags):
+                        continue
                 yield m
 
     def resolve_session_id(self, prefix: str) -> tuple[str, str]:
