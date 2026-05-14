@@ -7,7 +7,7 @@ from typing import Any
 
 import yaml
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 @dataclass
@@ -21,6 +21,7 @@ class SessionMeta:
     event_count: int
     last_seq: int  # -1 if no events yet
     last_ts: str | None
+    tag_count: int = 0
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -42,4 +43,5 @@ def read_meta(path: Path) -> SessionMeta | None:
         raw = yaml.safe_load(f) or {}
     raw.pop("schema_version", None)
     raw.setdefault("extra", {})
+    raw.setdefault("tag_count", 0)
     return SessionMeta(**raw)
