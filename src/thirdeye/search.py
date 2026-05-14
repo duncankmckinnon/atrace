@@ -3,8 +3,11 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import datetime
 
+from thirdeye.paths import session_dir as _session_dir
 from thirdeye.store import Store
+from thirdeye.tags import TagStore
 
 
 @dataclass(frozen=True)
@@ -27,8 +30,8 @@ def _snippet(text: str, query: str, window: int = 80) -> str:
     half = window // 2
     start = max(0, idx - half)
     end = min(len(text), idx + len(query) + half)
-    prefix = "\u2026" if start > 0 else ""
-    suffix = "\u2026" if end < len(text) else ""
+    prefix = "…" if start > 0 else ""
+    suffix = "…" if end < len(text) else ""
     return prefix + text[start:end] + suffix
 
 
@@ -38,11 +41,30 @@ def search(
     *,
     platform: str | None = None,
     cwd: str | None = None,
+    tags: set[str] | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
 ) -> Iterator[Hit]:
     needle = query.lower()
-    for meta in store.list_sessions(platform=platform, cwd=cwd):
+    require_tags = bool(tags)
+    for meta in store.list_sessions(
+        platform=platform,
+        cwd=cwd,
+        since=since,
+        until=until,
+    ):
+        if require_tags:
+            sd = _session_dir(store.config.root, meta.platform, meta.session_id)
+            tagged = TagStore(sd).all_tags()
+        else:
+            tagged = None
         reader = store.reader(meta.session_id)
         for event in reader.iter_events():
+            if require_tags:
+                assert tagged is not None
+                event_tags = tagged.get(event["seq"], set())
+                if not tags.issubset(event_tags):
+                    continue
             line = _stringify(event)
             if needle in line.lower():
                 yield Hit(
