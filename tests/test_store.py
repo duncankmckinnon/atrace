@@ -582,7 +582,9 @@ class TestListSessionsTagFilter:
 # -- list_sessions date filter -------------------------------------------------
 
 
-def _set_window(store: Store, sid: str, platform: str, started_at: str, last_ts: str | None) -> None:
+def _set_window(
+    store: Store, sid: str, platform: str, started_at: str, last_ts: str | None
+) -> None:
     sd = session_dir(store.config.root, platform, sid)
     mp = meta_path(sd)
     m = read_meta(mp)
@@ -594,12 +596,8 @@ def _set_window(store: Store, sid: str, platform: str, started_at: str, last_ts:
 
 class TestListSessionsDateFilter:
     def _build(self, tmp_store: Store) -> None:
-        tmp_store.append_event(
-            session_id="OLD", platform="claude", cwd="/p", t="x", data=1
-        )
-        tmp_store.append_event(
-            session_id="NEW", platform="claude", cwd="/p", t="x", data=1
-        )
+        tmp_store.append_event(session_id="OLD", platform="claude", cwd="/p", t="x", data=1)
+        tmp_store.append_event(session_id="NEW", platform="claude", cwd="/p", t="x", data=1)
         _set_window(
             tmp_store,
             "OLD",
@@ -642,9 +640,7 @@ class TestListSessionsDateFilter:
         assert [m.session_id for m in metas] == ["OLD"]
 
     def test_last_ts_none_zero_width_window(self, tmp_store: Store):
-        tmp_store.append_event(
-            session_id="EMPTY", platform="claude", cwd="/p", t="x", data=1
-        )
+        tmp_store.append_event(session_id="EMPTY", platform="claude", cwd="/p", t="x", data=1)
         _set_window(tmp_store, "EMPTY", "claude", "2026-02-15T00:00:00.000Z", None)
 
         # Within window
@@ -670,9 +666,7 @@ class TestListSessionsDateFilter:
 class TestListSessionsCombined:
     def test_platform_cwd_tags_since(self, tmp_store: Store):
         # MATCH: claude, /proj/a, tagged, within window
-        tmp_store.append_event(
-            session_id="MATCH", platform="claude", cwd="/proj/a", t="x", data=1
-        )
+        tmp_store.append_event(session_id="MATCH", platform="claude", cwd="/proj/a", t="x", data=1)
         _set_window(
             tmp_store,
             "MATCH",
@@ -721,9 +715,7 @@ class TestListSessionsCombined:
         )
 
         # TOO_OLD
-        tmp_store.append_event(
-            session_id="TOOOLD", platform="claude", cwd="/proj/a", t="x", data=1
-        )
+        tmp_store.append_event(session_id="TOOOLD", platform="claude", cwd="/proj/a", t="x", data=1)
         _set_window(
             tmp_store,
             "TOOOLD",
