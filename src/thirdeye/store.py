@@ -20,10 +20,15 @@ from thirdeye.tags import TagStore
 from thirdeye.writer import SessionWriter, utc_iso_ms
 
 
-def _parse_meta_ts(s: str) -> datetime:
+def _parse_iso(s: str | None) -> datetime | None:
+    if not s:
+        return None
     if s.endswith("Z"):
         s = s[:-1] + "+00:00"
-    return datetime.fromisoformat(s)
+    try:
+        return datetime.fromisoformat(s)
+    except ValueError:
+        return None
 
 
 class Store:
@@ -71,12 +76,13 @@ class Store:
                     continue
                 if status is not None and m.status != status:
                     continue
-                if since is not None or until is not None:
-                    window_start = _parse_meta_ts(m.started_at)
-                    window_end = _parse_meta_ts(m.last_ts) if m.last_ts else window_start
-                    if since is not None and window_end < since:
+                if since is not None:
+                    end = _parse_iso(m.last_ts) or _parse_iso(m.started_at)
+                    if end is not None and end < since:
                         continue
-                    if until is not None and window_start > until:
+                if until is not None:
+                    start = _parse_iso(m.started_at)
+                    if start is not None and start > until:
                         continue
                 if tags:
                     session_tags = TagStore(sd).unique_tags()
