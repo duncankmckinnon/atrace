@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -615,27 +615,27 @@ class TestListSessionsDateFilter:
 
     def test_since_excludes_older(self, tmp_store: Store):
         self._build(tmp_store)
-        since = datetime(2026, 2, 1, tzinfo=timezone.utc)
+        since = datetime(2026, 2, 1, tzinfo=UTC)
         metas = list(tmp_store.list_sessions(since=since))
         assert [m.session_id for m in metas] == ["NEW"]
 
     def test_until_excludes_newer(self, tmp_store: Store):
         self._build(tmp_store)
-        until = datetime(2026, 2, 1, tzinfo=timezone.utc)
+        until = datetime(2026, 2, 1, tzinfo=UTC)
         metas = list(tmp_store.list_sessions(until=until))
         assert [m.session_id for m in metas] == ["OLD"]
 
     def test_since_and_until_require_overlap(self, tmp_store: Store):
         self._build(tmp_store)
-        since = datetime(2026, 1, 15, tzinfo=timezone.utc)
-        until = datetime(2026, 2, 15, tzinfo=timezone.utc)
+        since = datetime(2026, 1, 15, tzinfo=UTC)
+        until = datetime(2026, 2, 15, tzinfo=UTC)
         metas = list(tmp_store.list_sessions(since=since, until=until))
         assert metas == []
 
     def test_overlap_at_window_start(self, tmp_store: Store):
         self._build(tmp_store)
-        since = datetime(2026, 1, 2, tzinfo=timezone.utc)
-        until = datetime(2026, 1, 15, tzinfo=timezone.utc)
+        since = datetime(2026, 1, 2, tzinfo=UTC)
+        until = datetime(2026, 1, 15, tzinfo=UTC)
         metas = list(tmp_store.list_sessions(since=since, until=until))
         assert [m.session_id for m in metas] == ["OLD"]
 
@@ -644,18 +644,18 @@ class TestListSessionsDateFilter:
         _set_window(tmp_store, "EMPTY", "claude", "2026-02-15T00:00:00.000Z", None)
 
         # Within window
-        since = datetime(2026, 2, 1, tzinfo=timezone.utc)
-        until = datetime(2026, 3, 1, tzinfo=timezone.utc)
+        since = datetime(2026, 2, 1, tzinfo=UTC)
+        until = datetime(2026, 3, 1, tzinfo=UTC)
         metas = list(tmp_store.list_sessions(since=since, until=until))
         assert [m.session_id for m in metas] == ["EMPTY"]
 
         # Strictly before since
-        since2 = datetime(2026, 3, 1, tzinfo=timezone.utc)
+        since2 = datetime(2026, 3, 1, tzinfo=UTC)
         metas = list(tmp_store.list_sessions(since=since2))
         assert metas == []
 
         # Strictly after until
-        until2 = datetime(2026, 2, 1, tzinfo=timezone.utc)
+        until2 = datetime(2026, 2, 1, tzinfo=UTC)
         metas = list(tmp_store.list_sessions(until=until2))
         assert metas == []
 
@@ -725,7 +725,7 @@ class TestListSessionsCombined:
         )
         TagStore(session_dir(tmp_store.config.root, "claude", "TOOOLD")).add(0, "wanted")
 
-        since = datetime(2026, 2, 1, tzinfo=timezone.utc)
+        since = datetime(2026, 2, 1, tzinfo=UTC)
         metas = list(
             tmp_store.list_sessions(
                 platform="claude",

@@ -277,9 +277,7 @@ class TestBeforeAgentHashtagExtract:
         sd = _sd(Config.load().root, "gemini", "g1")
         tag_file = tags_path(sd)
         assert tag_file.exists()
-        lines = [
-            json.loads(line) for line in tag_file.read_text().splitlines() if line.strip()
-        ]
+        lines = [json.loads(line) for line in tag_file.read_text().splitlines() if line.strip()]
         assert len(lines) == 1
         assert lines[0]["tag"] == "ship"
         assert lines[0]["op"] == "add"

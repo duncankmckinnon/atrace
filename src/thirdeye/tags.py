@@ -4,7 +4,7 @@ import json
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from thirdeye.paths import tags_path
@@ -15,7 +15,7 @@ _HASHTAG_RE = re.compile(r"(?<!\w)#([a-zA-Z][\w-]{0,63})")
 
 
 def _utc_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def validate_tag(tag: str) -> str:

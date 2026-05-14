@@ -108,9 +108,7 @@ def before_agent() -> None:
                 data=_strip_payload(payload),
             )
             try:
-                prompt = _flex_get(
-                    payload, "prompt", "input", "userInput", "message", "user_input"
-                )
+                prompt = _flex_get(payload, "prompt", "input", "userInput", "message", "user_input")
                 if isinstance(prompt, str) and prompt:
                     tags = extract_hashtags(prompt)
                     if tags:

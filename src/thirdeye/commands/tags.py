@@ -67,9 +67,7 @@ def tag(session_prefix, seq, add_raw, remove_raw, list_mode):
         raise click.ClickException(f"no meta for session {sid}")
     n = meta.event_count
     if seq < 0 or seq >= n:
-        raise click.ClickException(
-            f"seq {seq} not found in session {sid} (event_count={n})"
-        )
+        raise click.ClickException(f"seq {seq} not found in session {sid} (event_count={n})")
 
     ts = TagStore(sd)
     if add_raw is not None:

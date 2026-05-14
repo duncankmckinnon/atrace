@@ -53,9 +53,7 @@ class TestTagAdd:
 
 
 class TestTagRemove:
-    def test_remove_reduces_tag_count(
-        self, tmp_path: Path, runner: CliRunner, env: dict
-    ) -> None:
+    def test_remove_reduces_tag_count(self, tmp_path: Path, runner: CliRunner, env: dict) -> None:
         _seed(tmp_path, "abcSESSION1")
         r = runner.invoke(tag, ["abc", "0", "--add", "alpha,beta"], env=env)
         assert r.exit_code == 0, r.output
@@ -68,9 +66,7 @@ class TestTagRemove:
 
 
 class TestTagAddInvalidName:
-    def test_invalid_tag_name_fails(
-        self, tmp_path: Path, runner: CliRunner, env: dict
-    ) -> None:
+    def test_invalid_tag_name_fails(self, tmp_path: Path, runner: CliRunner, env: dict) -> None:
         _seed(tmp_path, "abcSESSION1")
         r = runner.invoke(tag, ["abc", "0", "--add", "Bad Tag"], env=env)
         assert r.exit_code != 0
@@ -79,17 +75,13 @@ class TestTagAddInvalidName:
 
 
 class TestTagSeqOutOfRange:
-    def test_seq_too_high_fails(
-        self, tmp_path: Path, runner: CliRunner, env: dict
-    ) -> None:
+    def test_seq_too_high_fails(self, tmp_path: Path, runner: CliRunner, env: dict) -> None:
         _seed(tmp_path, "abcSESSION1", n=2)
         r = runner.invoke(tag, ["abc", "999", "--add", "x"], env=env)
         assert r.exit_code != 0
         assert "seq 999 not found" in r.output
 
-    def test_seq_negative_fails(
-        self, tmp_path: Path, runner: CliRunner, env: dict
-    ) -> None:
+    def test_seq_negative_fails(self, tmp_path: Path, runner: CliRunner, env: dict) -> None:
         _seed(tmp_path, "abcSESSION1", n=2)
         r = runner.invoke(tag, ["abc", "-1", "--add", "x"], env=env)
         # negative number may be parsed as a flag — accept either failure mode
@@ -97,25 +89,19 @@ class TestTagSeqOutOfRange:
 
 
 class TestTagPrefixResolve:
-    def test_unique_prefix_resolves(
-        self, tmp_path: Path, runner: CliRunner, env: dict
-    ) -> None:
+    def test_unique_prefix_resolves(self, tmp_path: Path, runner: CliRunner, env: dict) -> None:
         _seed(tmp_path, "01JABCDEF")
         r = runner.invoke(tag, ["01", "0", "--add", "alpha"], env=env)
         assert r.exit_code == 0, r.output
 
-    def test_ambiguous_prefix_fails(
-        self, tmp_path: Path, runner: CliRunner, env: dict
-    ) -> None:
+    def test_ambiguous_prefix_fails(self, tmp_path: Path, runner: CliRunner, env: dict) -> None:
         _seed(tmp_path, "01JABCDEF")
         _seed(tmp_path, "01JGHIJKL", platform="cursor")
         r = runner.invoke(tag, ["01", "0", "--add", "alpha"], env=env)
         assert r.exit_code != 0
         assert "ambiguous" in r.output.lower()
 
-    def test_no_match_fails(
-        self, tmp_path: Path, runner: CliRunner, env: dict
-    ) -> None:
+    def test_no_match_fails(self, tmp_path: Path, runner: CliRunner, env: dict) -> None:
         _seed(tmp_path, "01JABCDEF")
         r = runner.invoke(tag, ["ZZZ", "0", "--add", "alpha"], env=env)
         assert r.exit_code != 0
@@ -141,18 +127,14 @@ class TestTagListMode:
 
 
 class TestTagListModeRejectsSeq:
-    def test_list_with_seq_fails(
-        self, tmp_path: Path, runner: CliRunner, env: dict
-    ) -> None:
+    def test_list_with_seq_fails(self, tmp_path: Path, runner: CliRunner, env: dict) -> None:
         _seed(tmp_path, "abcSESSION1")
         r = runner.invoke(tag, ["abc", "0", "--list"], env=env)
         assert r.exit_code != 0
 
 
 class TestTagsCommandTerse:
-    def test_terse_global_inventory(
-        self, tmp_path: Path, runner: CliRunner, env: dict
-    ) -> None:
+    def test_terse_global_inventory(self, tmp_path: Path, runner: CliRunner, env: dict) -> None:
         _seed(tmp_path, "sess0001A", n=3)
         _seed(tmp_path, "sess0002B", platform="cursor", n=2)
 
@@ -177,9 +159,7 @@ class TestTagsCommandTerse:
 
 
 class TestTagsCommandJson:
-    def test_json_lines(
-        self, tmp_path: Path, runner: CliRunner, env: dict
-    ) -> None:
+    def test_json_lines(self, tmp_path: Path, runner: CliRunner, env: dict) -> None:
         _seed(tmp_path, "sess0001A", n=2)
         runner.invoke(tag, ["sess0001A", "0", "--add", "alpha,beta"], env=env)
 
@@ -195,9 +175,7 @@ class TestTagsCommandJson:
 
 
 class TestTagAfterClose:
-    def test_tag_after_close_works(
-        self, tmp_path: Path, runner: CliRunner, env: dict
-    ) -> None:
+    def test_tag_after_close_works(self, tmp_path: Path, runner: CliRunner, env: dict) -> None:
         _seed(tmp_path, "abcSESSION1")
         store = Store(Config(root=tmp_path))
         store.close_session("abcSESSION1", platform="claude")

@@ -43,9 +43,7 @@ class TestListHarnessAlias:
         runner = CliRunner()
         env = _env(tmp_path)
         _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "x"}])
-        r = runner.invoke(
-            main, ["list", "--harness", "claude", "--platform", "claude"], env=env
-        )
+        r = runner.invoke(main, ["list", "--harness", "claude", "--platform", "claude"], env=env)
         assert r.exit_code == 0, r.output
         assert "01J9G7XK4P" in r.output
 
@@ -53,9 +51,7 @@ class TestListHarnessAlias:
         runner = CliRunner()
         env = _env(tmp_path)
         _seed(runner, env, "claude", "01J9G7XK4P", [{"t": "x"}])
-        r = runner.invoke(
-            main, ["list", "--harness", "claude", "--platform", "cursor"], env=env
-        )
+        r = runner.invoke(main, ["list", "--harness", "claude", "--platform", "cursor"], env=env)
         assert r.exit_code != 0
         assert "disagree" in r.output.lower()
 
