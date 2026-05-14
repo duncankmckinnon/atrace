@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from thirdeye.config import Config
+from thirdeye.paths import session_dir, tags_path
 from thirdeye.platforms.claude import hooks
 from thirdeye.store import Store
 
@@ -195,6 +196,84 @@ class TestUserPromptSubmit:
         assert events[1]["t"] == "user_message"
         assert events[1]["data"]["prompt"] == "hello"
         assert "session_id" not in events[1].get("data", {})
+
+
+# -- user_prompt_submit hashtag extraction -------------------------------------
+
+
+class TestUserPromptHashtagExtract:
+    def _tags_lines(self, env: Path, sid: str) -> list[dict]:
+        path = tags_path(session_dir(env, "claude", sid))
+        if not path.exists():
+            return []
+        out: list[dict] = []
+        for line in path.read_text().splitlines():
+            if line:
+                out.append(json.loads(line))
+        return out
+
+    def test_extracts_hashtags_into_tag_store(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(
+            monkeypatch,
+            {
+                "session_id": "s1",
+                "cwd": "/p",
+                "prompt": "let's #fix the #login-bug today",
+            },
+        )
+        hooks.user_prompt_submit()
+
+        store = Store(Config.load())
+        events = list(store.reader("s1").iter_events())
+        assert events[1]["t"] == "user_message"
+        user_seq = events[1]["seq"]
+
+        lines = self._tags_lines(env, "s1")
+        assert len(lines) == 2
+        tags = {line["tag"] for line in lines}
+        assert tags == {"fix", "login-bug"}
+        for line in lines:
+            assert line["op"] == "add"
+            assert line["source"] == "auto"
+            assert line["seq"] == user_seq
+
+        m = store.get_meta("s1")
+        assert m.tag_count == 1
+
+    def test_no_hashtags_does_not_create_tags_file(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p", "prompt": "just a plain prompt"})
+        hooks.user_prompt_submit()
+        path = tags_path(session_dir(env, "claude", "s1"))
+        assert not path.exists() or path.read_text() == ""
+        m = Store(Config.load()).get_meta("s1")
+        assert m.tag_count == 0
+
+    def test_missing_prompt_field_no_crash(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.user_prompt_submit()
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert events[1]["t"] == "user_message"
+        assert self._tags_lines(env, "s1") == []
+
+    def test_null_prompt_no_crash(self, monkeypatch, env: Path):
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p"})
+        hooks.session_start()
+        _stdin(monkeypatch, {"session_id": "s1", "cwd": "/p", "prompt": None})
+        hooks.user_prompt_submit()
+        events = list(Store(Config.load()).reader("s1").iter_events())
+        assert events[1]["t"] == "user_message"
+        assert self._tags_lines(env, "s1") == []
+
+    def test_malformed_stdin_silent_noop(self, monkeypatch, env: Path):
+        monkeypatch.setattr("sys.stdin", io.StringIO("not json"))
+        hooks.user_prompt_submit()
+        assert list(Store(Config.load()).list_sessions()) == []
 
 
 # -- pre_tool_use --------------------------------------------------------------
