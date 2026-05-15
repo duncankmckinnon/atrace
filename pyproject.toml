@@ -57,11 +57,17 @@ thirdeye-gemini-after-tool = "thirdeye.platforms.gemini.hooks:after_tool"
 requires = ["setuptools>=64", "setuptools-scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-dir]
 "" = "src"
+
+[tool.setuptools.package-data]
+thirdeye = ["skills/use-thirdeye/SKILL.md", "skills/use-thirdeye/references/*.md"]
 
 [tool.setuptools_scm]
 version_file = "src/thirdeye/_version.py"

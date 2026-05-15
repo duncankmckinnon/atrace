@@ -6,6 +6,7 @@ from thirdeye import __version__
 from thirdeye.commands.add import add, remove
 from thirdeye.commands.ingest import ingest
 from thirdeye.commands.reads import event, events, list_sessions, search, show, stats, tail
+from thirdeye.commands.skill import skill
 from thirdeye.commands.tags import tag, tags
 
 
@@ -24,6 +25,7 @@ main.add_command(events)
 main.add_command(tail)
 main.add_command(event)
 main.add_command(search)
+main.add_command(skill)
 main.add_command(tag)
 main.add_command(tags)
 main.add_command(stats)
