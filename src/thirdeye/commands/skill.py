@@ -50,7 +50,5 @@ def _bundled_skill_root() -> Path:
     root = resources.files("thirdeye").joinpath("skills/use-thirdeye")
     path = Path(str(root))
     if not path.is_dir():
-        raise click.ClickException(
-            f"bundled skill not found at {path} — reinstall thirdeye"
-        )
+        raise click.ClickException(f"bundled skill not found at {path} — reinstall thirdeye")
     return path.resolve()
