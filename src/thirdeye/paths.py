@@ -27,3 +27,19 @@ def meta_path(session_dir_: Path) -> Path:
 
 def tags_path(session_dir_: Path) -> Path:
     return session_dir_ / "tags.jsonl"
+
+
+def usage_jsonl_path(session_dir_: Path) -> Path:
+    return session_dir_ / "usage.jsonl"
+
+
+def usage_state_path(session_dir_: Path) -> Path:
+    return session_dir_ / "usage.state.json"
+
+
+def usage_db_path(thirdeye_home: Path) -> Path:
+    return thirdeye_home / "usage.db"
+
+
+def usage_log_path(thirdeye_home: Path) -> Path:
+    return thirdeye_home / "logs" / "usage-errors.jsonl"

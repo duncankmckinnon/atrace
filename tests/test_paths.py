@@ -9,6 +9,10 @@ from thirdeye.paths import (
     platform_dir,
     session_dir,
     sessions_root,
+    usage_db_path,
+    usage_jsonl_path,
+    usage_log_path,
+    usage_state_path,
 )
 
 
@@ -70,3 +74,27 @@ class TestEventFiles:
     def test_all_under_session_dir(self):
         for fn in (events_path, index_path, meta_path):
             assert fn(self.sd).parent == self.sd
+
+
+class TestUsagePaths:
+    def test_usage_jsonl_path(self):
+        sd = Path("/x/.thirdeye/traces/claude/abc")
+        assert usage_jsonl_path(sd) == sd / "usage.jsonl"
+
+    def test_usage_state_path(self):
+        sd = Path("/x/.thirdeye/traces/claude/abc")
+        assert usage_state_path(sd) == sd / "usage.state.json"
+
+    def test_usage_db_path(self):
+        home = Path("/home/user/.thirdeye")
+        assert usage_db_path(home) == home / "usage.db"
+
+    def test_usage_log_path_is_under_logs_dir(self):
+        home = Path("/home/user/.thirdeye")
+        assert usage_log_path(home) == home / "logs" / "usage-errors.jsonl"
+
+    def test_helpers_compose_with_session_dir(self):
+        home = Path("/x/.thirdeye")
+        sd = session_dir(home, "claude", "abc123")
+        assert usage_jsonl_path(sd) == home / "traces" / "claude" / "abc123" / "usage.jsonl"
+        assert usage_state_path(sd) == home / "traces" / "claude" / "abc123" / "usage.state.json"
