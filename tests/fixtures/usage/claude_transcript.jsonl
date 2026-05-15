@@ -1,0 +1,4 @@
+{"type":"user","message":{"role":"user","content":"hi"},"timestamp":"2026-05-15T00:00:00Z"}
+{"type":"assistant","message":{"role":"assistant","model":"claude-opus-4-7","content":[{"type":"text","text":"hello"}],"usage":{"input_tokens":12450,"output_tokens":187},"timestamp":"2026-05-15T00:00:01Z"}}
+{"type":"meta","message":null}
+{"type":"assistant","message":{"role":"assistant","model":"claude-opus-4-7","content":[{"type":"text","text":"more"}],"usage":{"input_tokens":13082,"output_tokens":91},"timestamp":"2026-05-15T00:00:02Z"}}
