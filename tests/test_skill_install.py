@@ -83,3 +83,26 @@ def test_install_expands_user(
     result = _run(fake_skill, ["--target", "~/.claude/skills/use-thirdeye"])
     assert result.exit_code == 0
     assert (tmp_path / ".claude" / "skills" / "use-thirdeye").is_symlink()
+
+
+def test_install_positional_argument(fake_skill: Path, tmp_path: Path) -> None:
+    custom = tmp_path / ".claude" / "skills" / "use-thirdeye"
+    result = _run(fake_skill, [str(custom)])
+    assert result.exit_code == 0
+    assert custom.is_symlink()
+
+
+def test_install_appends_skill_name_when_missing(fake_skill: Path, tmp_path: Path) -> None:
+    # Passing a parent dir auto-appends `use-thirdeye`.
+    parent = tmp_path / ".claude" / "skills"
+    result = _run(fake_skill, [str(parent)])
+    assert result.exit_code == 0
+    assert (parent / "use-thirdeye").is_symlink()
+
+
+def test_install_rejects_both_positional_and_option(fake_skill: Path, tmp_path: Path) -> None:
+    a = tmp_path / "a"
+    b = tmp_path / "b"
+    result = _run(fake_skill, [str(a), "--target", str(b)])
+    assert result.exit_code != 0
+    assert "not both" in result.output

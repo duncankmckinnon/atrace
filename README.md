@@ -56,10 +56,11 @@ token usage, and run evaluations against recorded traces.
 Install it into a repo so an agent working there picks it up automatically:
 
 ```bash
-thirdeye skill install                                          # default: .agents/skills/use-thirdeye
-thirdeye skill install --target .claude/commands/use-thirdeye   # Claude Code project-level
-thirdeye skill install --target ~/.claude/skills/use-thirdeye   # Claude Code user-level
-thirdeye skill install --force                                  # replace an existing entry
+thirdeye skill install                          # default: .agents/skills/use-thirdeye
+thirdeye skill install .claude/skills           # auto-appends use-thirdeye
+thirdeye skill install .claude/commands/use-thirdeye   # full path also works
+thirdeye skill install ~/.claude/skills         # Claude Code user-level
+thirdeye skill install --force                  # replace an existing entry
 ```
 
 `--target` is the full destination path of the symlink — point it wherever your agent
