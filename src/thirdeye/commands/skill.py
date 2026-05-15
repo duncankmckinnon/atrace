@@ -23,8 +23,10 @@ def skill() -> None:
 @click.option("--force", is_flag=True, help="Replace an existing entry at the destination.")
 def install(target: Path, force: bool) -> None:
     """Symlink the bundled `use-thirdeye` skill into TARGET."""
-    source = _bundled_skill_root()
-    dest = target.expanduser().resolve()
+    source = _bundled_skill_root().resolve()
+    # `absolute()` (not `resolve()`) keeps `dest` pointing at the symlink itself
+    # rather than following it to its target on subsequent runs.
+    dest = target.expanduser().absolute()
     dest.parent.mkdir(parents=True, exist_ok=True)
 
     if dest.is_symlink() and dest.resolve() == source:
