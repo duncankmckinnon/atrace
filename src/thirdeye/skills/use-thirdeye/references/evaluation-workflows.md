@@ -22,7 +22,7 @@ thirdeye tag <sid> <seq> --add "incorrect"
 Then export tagged events:
 
 ```bash
-thirdeye search --tag correct   # retrieve all events tagged "correct"
+thirdeye search "" --tag correct   # retrieve all events tagged "correct"
 ```
 
 ## Ingest external evaluation results

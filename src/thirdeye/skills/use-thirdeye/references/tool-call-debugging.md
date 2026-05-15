@@ -5,7 +5,7 @@ Inspect tool inputs and outputs recorded in a session.
 ## Find tool-use events
 
 ```bash
-thirdeye search "tool_use" --session <sid>
+thirdeye search "tool_use"           # search for tool_use events across all sessions
 thirdeye events <sid> --type tool_use
 ```
 

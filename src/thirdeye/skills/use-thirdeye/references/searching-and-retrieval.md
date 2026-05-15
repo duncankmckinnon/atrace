@@ -5,9 +5,9 @@ Find sessions and events across the unified store.
 ## List sessions
 
 ```bash
-thirdeye sessions                    # all platforms, newest first
-thirdeye sessions --platform claude  # filter by platform
-thirdeye sessions --limit 10
+thirdeye list                        # all platforms, newest first
+thirdeye list --platform claude      # filter by platform
+thirdeye list --since "1 hour ago"   # sessions active in the last hour
 ```
 
 ## Search across sessions
@@ -24,8 +24,9 @@ thirdeye event <session-prefix> <seq>
 thirdeye show <session-prefix>       # summary of a session
 ```
 
-## Tail live events
+## Tail recent events
 
 ```bash
-thirdeye tail <session-prefix>       # stream events as they arrive
+thirdeye tail <session-prefix>       # last 10 events in a session
+thirdeye tail <session-prefix> -n 20 # last 20 events
 ```

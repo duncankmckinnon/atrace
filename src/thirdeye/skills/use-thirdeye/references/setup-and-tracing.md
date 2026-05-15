@@ -22,6 +22,6 @@ is captured under `<thirdeye_home>/traces/claude/<session-id>/`.
 ## Verify data is flowing
 
 ```bash
-thirdeye sessions          # list recent sessions
+thirdeye list              # list recent sessions
 thirdeye events <sid>      # list events in a session
 ```
