@@ -40,6 +40,20 @@ def capture_usage_claude(
     sd = session_dir(thirdeye_home, "claude", session_id)
     store = UsageStore(sd)
     state = store.read_state()
+    if "transcript_offset" not in state:
+        log_capture_error(
+            thirdeye_home=thirdeye_home,
+            phase="discover_transcript",
+            message=(
+                "first capture for session; transcript frame shape is unverified "
+                "against a real Claude Code transcript — remove this warning once "
+                "format is confirmed end-to-end"
+            ),
+            platform="claude",
+            session_id=session_id,
+            source_path=str(transcript_path),
+            level="warn",
+        )
     offset = int(state.get("transcript_offset", 0))
 
     new_rows: list[UsageRow] = []
