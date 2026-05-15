@@ -63,10 +63,28 @@ def _emit(t: str, payload: dict) -> bool:
 
 
 def notify() -> None:
+    from thirdeye.platforms.codex.usage import capture_usage_codex
+
     try:
         payload = _read_argv()
         if payload.get("type") != "agent-turn-complete":
             return
-        _emit("agent_turn", payload)
+        sid = _flex_get(payload, "thread-id", "thread_id", "threadId")
+        if not sid:
+            return
+        cwd = _flex_get(payload, "cwd", "working-directory", "working_directory") or os.getcwd()
+        config = Config.load()
+        seq = Store(config).append_event(
+            session_id=sid,
+            platform=_PLATFORM,
+            cwd=cwd,
+            t="agent_turn",
+            data=_strip_payload(payload),
+        )
+        capture_usage_codex(
+            thirdeye_home=config.root,
+            session_id=sid,
+            triggering_seq=seq,
+        )
     except Exception:
         pass
