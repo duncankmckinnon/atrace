@@ -35,10 +35,7 @@ def test_connect_creates_schema(tmp_path: Path) -> None:
     idx = UsageIndex(tmp_path)
     conn = idx.connect()
     tables = {
-        r[0]
-        for r in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'table'"
-        ).fetchall()
+        r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
     }
     assert "usage" in tables and "usage_sync" in tables
     user_version = conn.execute("PRAGMA user_version").fetchone()[0]
@@ -106,8 +103,7 @@ def test_refresh_skips_malformed_line(tmp_path: Path) -> None:
     jsonl = usage_jsonl_path(sd)
     jsonl.write_text(
         json.dumps(make_row(0).to_dict()) + "\n"
-        "{this is not valid json\n"
-        + json.dumps(make_row(1).to_dict()) + "\n"
+        "{this is not valid json\n" + json.dumps(make_row(1).to_dict()) + "\n"
     )
     idx = UsageIndex(tmp_path)
     conn = idx.connect()
@@ -125,15 +121,15 @@ def test_refresh_handles_empty_sessions_root(tmp_path: Path) -> None:
 def test_refresh_across_multiple_platforms(tmp_path: Path) -> None:
     _seed_session(tmp_path, "claude", "abc", [make_row(0, platform="claude")])
     _seed_session(
-        tmp_path, "gemini", "def",
+        tmp_path,
+        "gemini",
+        "def",
         [make_row(0, session_id="def", platform="gemini", model="gemini-3-flash-preview")],
     )
     idx = UsageIndex(tmp_path)
     conn = idx.connect()
     assert idx.refresh(conn) == 2
-    platforms = sorted(
-        r[0] for r in conn.execute("SELECT DISTINCT platform FROM usage").fetchall()
-    )
+    platforms = sorted(r[0] for r in conn.execute("SELECT DISTINCT platform FROM usage").fetchall())
     assert platforms == ["claude", "gemini"]
 
 

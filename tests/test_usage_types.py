@@ -36,16 +36,18 @@ def test_round_trip_via_json() -> None:
 
 def test_from_dict_coerces_string_numerics() -> None:
     """Integer-like strings should coerce, mirroring JSON-from-disk quirks."""
-    row = UsageRow.from_dict({
-        "session_id": "abc",
-        "seq": "5",
-        "ts": "2026-05-15T00:00:00Z",
-        "platform": "claude",
-        "model": "m",
-        "input_tokens": "100",
-        "output_tokens": "10",
-        "total_tokens": "110",
-    })
+    row = UsageRow.from_dict(
+        {
+            "session_id": "abc",
+            "seq": "5",
+            "ts": "2026-05-15T00:00:00Z",
+            "platform": "claude",
+            "model": "m",
+            "input_tokens": "100",
+            "output_tokens": "10",
+            "total_tokens": "110",
+        }
+    )
     assert row.seq == 5 and row.input_tokens == 100
 
 

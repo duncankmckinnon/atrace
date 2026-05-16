@@ -70,8 +70,7 @@ def test_iter_rows_handles_missing_file(session: Path) -> None:
 def test_iter_rows_skips_malformed_lines(session: Path) -> None:
     (session / "usage.jsonl").write_text(
         json.dumps(make_row(0).to_dict()) + "\n"
-        "this is not valid json\n"
-        + json.dumps(make_row(1).to_dict()) + "\n"
+        "this is not valid json\n" + json.dumps(make_row(1).to_dict()) + "\n"
         "\n"  # blank line
     )
     rows = list(UsageStore(session).iter_rows())

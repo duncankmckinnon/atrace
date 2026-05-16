@@ -120,6 +120,7 @@ def test_safe_capture_swallows_unexpected_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import thirdeye.platforms.claude.usage as mod
+
     monkeypatch.setattr(
         mod, "_extract_row", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("oops"))
     )
@@ -229,8 +230,7 @@ def test_capture_advances_offset_with_no_rows(tmp_path: Path) -> None:
     """Even when no assistant frames are found, the offset must advance past the read bytes."""
     transcript = tmp_path / "user_only.jsonl"
     transcript.write_text(
-        '{"type":"user","message":{"role":"user","content":"hi"}}\n'
-        '{"type":"meta"}\n'
+        '{"type":"user","message":{"role":"user","content":"hi"}}\n' '{"type":"meta"}\n'
     )
     rows = capture_usage_claude(
         thirdeye_home=tmp_path,
@@ -295,7 +295,11 @@ def test_stop_hook_invokes_capture_and_survives_failure(
         captured.update(kwargs)
         return original(**kwargs)
 
-    monkeypatch.setattr(hooks, "_strip_payload", lambda p: {k: v for k, v in p.items() if k not in {"session_id", "cwd", "transcript_path"}})
+    monkeypatch.setattr(
+        hooks,
+        "_strip_payload",
+        lambda p: {k: v for k, v in p.items() if k not in {"session_id", "cwd", "transcript_path"}},
+    )
     # Patch where the function is looked up: it's imported inside `stop`.
     monkeypatch.setattr("thirdeye.platforms.claude.usage.capture_usage_claude", spy)
 

@@ -23,19 +23,48 @@ def home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
             for r in rows:
                 f.write(json.dumps(r) + "\n")
 
-    seed("claude", "abc123", [
-        {"session_id": "abc123", "seq": 0, "ts": "2026-05-10T00:00:00Z",
-         "platform": "claude", "model": "claude-opus-4-7",
-         "input_tokens": 100, "output_tokens": 10, "total_tokens": 110},
-        {"session_id": "abc123", "seq": 5, "ts": "2026-05-10T00:00:05Z",
-         "platform": "claude", "model": "claude-opus-4-7",
-         "input_tokens": 200, "output_tokens": 20, "total_tokens": 220},
-    ])
-    seed("gemini", "def456", [
-        {"session_id": "def456", "seq": 0, "ts": "2026-05-12T00:00:00Z",
-         "platform": "gemini", "model": "gemini-3-flash-preview",
-         "input_tokens": 9582, "output_tokens": 1, "total_tokens": 9748},
-    ])
+    seed(
+        "claude",
+        "abc123",
+        [
+            {
+                "session_id": "abc123",
+                "seq": 0,
+                "ts": "2026-05-10T00:00:00Z",
+                "platform": "claude",
+                "model": "claude-opus-4-7",
+                "input_tokens": 100,
+                "output_tokens": 10,
+                "total_tokens": 110,
+            },
+            {
+                "session_id": "abc123",
+                "seq": 5,
+                "ts": "2026-05-10T00:00:05Z",
+                "platform": "claude",
+                "model": "claude-opus-4-7",
+                "input_tokens": 200,
+                "output_tokens": 20,
+                "total_tokens": 220,
+            },
+        ],
+    )
+    seed(
+        "gemini",
+        "def456",
+        [
+            {
+                "session_id": "def456",
+                "seq": 0,
+                "ts": "2026-05-12T00:00:00Z",
+                "platform": "gemini",
+                "model": "gemini-3-flash-preview",
+                "input_tokens": 9582,
+                "output_tokens": 1,
+                "total_tokens": 9748,
+            },
+        ],
+    )
     return tmp_path
 
 
@@ -115,13 +144,20 @@ def test_errors_subcommand_with_entries(home: Path) -> None:
     log = usage_log_path(home)
     log.parent.mkdir(parents=True, exist_ok=True)
     log.write_text(
-        json.dumps({
-            "ts": "2026-05-12T00:00:00Z", "level": "warn",
-            "platform": "claude", "session_id": "abc123",
-            "phase": "parse_transcript", "source_path": "/x",
-            "error_class": "FileNotFoundError", "message": "gone",
-            "traceback": "",
-        }) + "\n"
+        json.dumps(
+            {
+                "ts": "2026-05-12T00:00:00Z",
+                "level": "warn",
+                "platform": "claude",
+                "session_id": "abc123",
+                "phase": "parse_transcript",
+                "source_path": "/x",
+                "error_class": "FileNotFoundError",
+                "message": "gone",
+                "traceback": "",
+            }
+        )
+        + "\n"
     )
     runner = CliRunner()
     result = runner.invoke(usage, ["errors"], catch_exceptions=False)

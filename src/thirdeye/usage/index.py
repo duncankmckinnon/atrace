@@ -7,7 +7,6 @@ from pathlib import Path
 from thirdeye.paths import sessions_root, usage_db_path, usage_jsonl_path
 from thirdeye.usage.errlog import log_capture_error
 
-
 SCHEMA_VERSION = 1
 
 SCHEMA_SQL = """
@@ -68,16 +67,12 @@ class UsageIndex:
         conn.commit()
         return inserted
 
-    def refresh_session(
-        self, conn: sqlite3.Connection, session_id: str, session_dir_: Path
-    ) -> int:
+    def refresh_session(self, conn: sqlite3.Connection, session_id: str, session_dir_: Path) -> int:
         n = self._refresh_one(conn, session_id, session_dir_)
         conn.commit()
         return n
 
-    def _refresh_one(
-        self, conn: sqlite3.Connection, sid: str, session_dir_: Path
-    ) -> int:
+    def _refresh_one(self, conn: sqlite3.Connection, sid: str, session_dir_: Path) -> int:
         jsonl = usage_jsonl_path(session_dir_)
         if not jsonl.exists():
             return 0

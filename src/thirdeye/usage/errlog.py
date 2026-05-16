@@ -4,7 +4,7 @@ import functools
 import json
 import sys
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from thirdeye.paths import usage_log_path
@@ -29,7 +29,7 @@ def log_capture_error(
         log = usage_log_path(thirdeye_home)
         log.parent.mkdir(parents=True, exist_ok=True)
         entry = {
-            "ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "ts": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "level": level,
             "platform": platform,
             "session_id": session_id,
@@ -66,9 +66,7 @@ def safe_capture(phase: str, platform: str):
                 home = kwargs.get("thirdeye_home")
                 sid = kwargs.get("session_id", "")
                 if home is None:
-                    sys.stderr.write(
-                        f"[thirdeye usage] {platform}/{phase}: {exc!r}\n"
-                    )
+                    sys.stderr.write(f"[thirdeye usage] {platform}/{phase}: {exc!r}\n")
                 else:
                     log_capture_error(
                         thirdeye_home=home,

@@ -21,7 +21,7 @@ class UsageRow:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "UsageRow":
+    def from_dict(cls, d: dict[str, Any]) -> UsageRow:
         return cls(
             session_id=str(d["session_id"]),
             seq=int(d["seq"]),
