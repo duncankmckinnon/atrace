@@ -8,6 +8,7 @@ from thirdeye.commands.ingest import ingest
 from thirdeye.commands.reads import event, events, list_sessions, search, show, stats, tail
 from thirdeye.commands.skill import skill
 from thirdeye.commands.tags import tag, tags
+from thirdeye.commands.usage import usage
 
 
 @click.group(name="thirdeye", help="Trace agentic CLIs to a unified local store.")
@@ -29,3 +30,4 @@ main.add_command(skill)
 main.add_command(tag)
 main.add_command(tags)
 main.add_command(stats)
+main.add_command(usage)
