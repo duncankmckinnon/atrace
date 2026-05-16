@@ -30,11 +30,33 @@ def _resolve_session(config: Config, prefix: str) -> tuple[str, str]:
         raise click.ClickException(str(e)) from e
 
 
+class _UsageGroup(click.Group):
+    """Route non-subcommand args to the default `show` subcommand.
+
+    Lets `thirdeye usage [SESSION_PREFIX] [OPTIONS]` work alongside
+    `thirdeye usage reindex` and `thirdeye usage errors` without the
+    positional-vs-subcommand parsing collision that arises from putting
+    a positional argument directly on an `invoke_without_command` group.
+    """
+
+    def parse_args(self, ctx, args):
+        if not args:
+            args = ["show"]
+        elif args[0] not in self.commands and args[0] not in ("--help", "-h"):
+            args = ["show", *args]
+        return super().parse_args(ctx, args)
+
+
 @click.group(
+    cls=_UsageGroup,
     name="usage",
-    invoke_without_command=True,
     help="Per-event model and token usage.",
 )
+def usage():
+    pass
+
+
+@usage.command(name="show")
 @click.argument("session_prefix", required=False)
 @click.option("--json", "as_json", is_flag=True, help="JSONL output.")
 @click.option("--tree", is_flag=True, help="Human-readable table (default).")
@@ -58,13 +80,11 @@ def _resolve_session(config: Config, prefix: str) -> tuple[str, str]:
     type=click.Choice(["total", "input", "output", "ts"]),
     default=None,
 )
-@click.pass_context
-def usage(
-    ctx, session_prefix, as_json, tree, platform_filter, harness_filter,
+def show_cmd(
+    session_prefix, as_json, tree, platform_filter, harness_filter,
     model_filter, since, until, top, sort,
 ):
-    if ctx.invoked_subcommand is not None:
-        return
+    """Render per-session or rollup usage view."""
     _run_show(
         session_prefix=session_prefix,
         as_json=as_json,
