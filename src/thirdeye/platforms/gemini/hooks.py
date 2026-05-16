@@ -148,8 +148,28 @@ def before_model() -> None:
 
 
 def after_model() -> None:
+    from thirdeye.platforms.gemini.usage import capture_usage_gemini
+
     try:
-        _emit("model_response", _read_stdin())
+        payload = _read_stdin()
+        sid = _flex_get(payload, "session_id", "sessionId")
+        if not sid:
+            return
+        cwd = _flex_get(payload, "cwd", "workingDir", "working_dir") or os.getcwd()
+        config = Config.load()
+        seq = Store(config).append_event(
+            session_id=sid,
+            platform=_PLATFORM,
+            cwd=cwd,
+            t="model_response",
+            data=_strip_payload(payload),
+        )
+        capture_usage_gemini(
+            thirdeye_home=config.root,
+            session_id=sid,
+            payload=payload,
+            triggering_seq=seq,
+        )
     except Exception:
         pass
     finally:

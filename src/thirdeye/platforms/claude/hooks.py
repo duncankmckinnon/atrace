@@ -97,7 +97,27 @@ def post_tool_use() -> None:
 
 
 def stop() -> None:
-    _emit("assistant_message", _read_stdin())
+    from thirdeye.platforms.claude.usage import capture_usage_claude
+
+    payload = _read_stdin()
+    sid = payload.get("session_id")
+    if not sid:
+        return
+    cwd = payload.get("cwd") or os.getcwd()
+    config = Config.load()
+    seq = Store(config).append_event(
+        session_id=sid,
+        platform=_PLATFORM,
+        cwd=cwd,
+        t="assistant_message",
+        data=_strip_payload(payload),
+    )
+    capture_usage_claude(
+        thirdeye_home=config.root,
+        session_id=sid,
+        transcript_path=payload.get("transcript_path"),
+        triggering_seq=seq,
+    )
 
 
 def subagent_stop() -> None:
