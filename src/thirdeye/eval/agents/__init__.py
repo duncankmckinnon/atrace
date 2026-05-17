@@ -6,7 +6,12 @@ from typing import Any
 
 import yaml
 
-from thirdeye.eval.agents.base import AgentAdapter, ConfigAdapter
+from thirdeye.eval.agents.base import (
+    AgentAdapter,
+    AgentConfig,
+    ConfigAdapter,
+    OutputFormat,
+)
 from thirdeye.eval.agents.claude import ClaudeAdapter
 from thirdeye.eval.agents.codex import CodexAdapter
 from thirdeye.eval.agents.gemini import GeminiAdapter
@@ -59,3 +64,17 @@ def list_agent_names(thirdeye_home: Path | None = None) -> list[str]:
     if thirdeye_home is not None:
         names.update(_load_user_overrides(thirdeye_home).keys())
     return sorted(names)
+
+
+__all__ = [
+    "AgentAdapter",
+    "AgentConfig",
+    "ConfigAdapter",
+    "OutputFormat",
+    "ClaudeAdapter",
+    "CodexAdapter",
+    "GeminiAdapter",
+    "BUILTIN_ADAPTERS",
+    "get_adapter",
+    "list_agent_names",
+]
