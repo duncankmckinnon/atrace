@@ -18,9 +18,9 @@ def home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     sd = session_dir(tmp_path, "claude", "abc123")
     sd.mkdir(parents=True)
     (sd / "meta.yaml").write_text(
-        "schema_version: 1\nsession_id: abc123\nplatform: claude\n"
-        "cwd: /x\nstarted_at: 2026-05-16T00:00:00Z\nstatus: open\n"
-        "event_count: 1\n"
+        "schema_version: 2\nsession_id: abc123\nplatform: claude\n"
+        "cwd: /x\nstarted_at: 2026-05-16T00:00:00Z\nended_at: null\n"
+        "status: open\nevent_count: 1\nlast_seq: -1\nlast_ts: null\n"
     )
     # Custom definition
     cfg = eval_def_path(tmp_path, "test")
