@@ -67,7 +67,11 @@ where = ["src"]
 "" = "src"
 
 [tool.setuptools.package-data]
-thirdeye = ["skills/use-thirdeye/SKILL.md", "skills/use-thirdeye/references/*.md"]
+thirdeye = [
+    "skills/use-thirdeye/SKILL.md",
+    "skills/use-thirdeye/references/*.md",
+    "eval/defs/*.yaml",
+]
 
 [tool.setuptools_scm]
 version_file = "src/thirdeye/_version.py"

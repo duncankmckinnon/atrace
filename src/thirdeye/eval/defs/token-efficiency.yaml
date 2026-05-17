@@ -1,0 +1,21 @@
+name: token-efficiency
+description: |
+  Narrow eval focused on token spend. Use when investigating expensive
+  sessions or comparing cache utilization.
+directive: |
+  Evaluate token efficiency in this thirdeye-recorded session. Ignore
+  correctness; focus only on whether tokens were spent well.
+
+  Check for:
+  - Oversized system prompts (first turn `input_tokens` unusually high)
+  - Repeated reads of the same file in consecutive turns
+  - Runaway tool-result payloads (>20KB content)
+  - Low cache-hit ratios on supported platforms
+  - Redundant context re-injection between turns
+
+  Use `thirdeye usage <sid>` and `sqlite3 <home>/usage.db` to verify token
+  patterns. Report findings keyed by event seq.
+
+  Score `token_efficiency` (0-10) and `overall` (0-10).
+default_agent: claude
+output_schema: v1
