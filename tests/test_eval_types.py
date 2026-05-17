@@ -2,11 +2,8 @@ from __future__ import annotations
 
 import re
 
-import pytest
-
 from thirdeye.eval._ulid import ulid_now
 from thirdeye.eval.result import EvalResult, Finding, parse_envelope
-
 
 # --- Finding ---
 

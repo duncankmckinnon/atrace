@@ -5,7 +5,6 @@ import re
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-
 VALID_VERDICTS = frozenset({"pass", "warn", "fail", "unknown"})
 VALID_SEVERITIES = frozenset({"info", "warn", "error"})
 
@@ -22,7 +21,7 @@ class Finding:
                 "category": self.category, "note": self.note}
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "Finding":
+    def from_dict(cls, d: dict[str, Any]) -> Finding:
         sev = str(d.get("severity", "info"))
         if sev not in VALID_SEVERITIES:
             sev = "info"
@@ -59,7 +58,7 @@ class EvalResult:
         return d
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "EvalResult":
+    def from_dict(cls, d: dict[str, Any]) -> EvalResult:
         verdict = str(d.get("verdict", "unknown"))
         if verdict not in VALID_VERDICTS:
             verdict = "unknown"
