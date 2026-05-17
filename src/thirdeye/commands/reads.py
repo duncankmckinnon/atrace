@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
+from pathlib import Path
 
 import click
 
@@ -40,6 +41,27 @@ def _parse_when_or_die(value: str | None, flag: str):
         return parse_when(value)
     except ValueError as e:
         raise click.ClickException(f"could not parse {flag} {value!r}: {e}") from e
+
+
+def _read_findings_map(session_dir_: Path, eval_filter: str | None) -> dict[int | None, list]:
+    """Return a map from seq (or None) to a list of (definition_name, Finding)."""
+    from thirdeye.eval.store import EvalStore
+
+    out: dict[int | None, list] = {}
+    for result in EvalStore(session_dir_).iter_results():
+        if eval_filter is not None and result.definition != eval_filter:
+            continue
+        for f in result.findings:
+            out.setdefault(f.seq, []).append((result.definition, f))
+    return out
+
+
+def _print_findings_for_seq(seq: int | None, findings_map: dict) -> None:
+    glyphs = {"info": "·", "warn": "⚠", "error": "✖"}
+    for defn_name, f in findings_map.get(seq, []):
+        glyph = glyphs.get(f.severity, "·")
+        cat = f.category or "—"
+        click.echo(f"  {glyph} {defn_name} · {cat}: {f.note}")
 
 
 def _resolve_tags(tags: tuple[str, ...]) -> set[str] | None:
@@ -94,10 +116,44 @@ def list_sessions(platform, harness, cwd, status, tags, since, until, json_mode,
 @click.option("--json", "json_mode", is_flag=True)
 @click.option("--tree", "tree_mode", is_flag=True)
 @click.option("--width", default=120, type=int, help="Line width (0 = unlimited).")
-def events(session_prefix, types, json_mode, tree_mode, width):
-    reader = _store().reader(session_prefix)
+@click.option(
+    "--findings/--no-findings",
+    default=True,
+    show_default=True,
+    help="Annotate output with per-event findings from evals.jsonl.",
+)
+@click.option(
+    "--eval",
+    "eval_filter",
+    default=None,
+    help="Only show findings from this eval definition.",
+)
+def events(session_prefix, types, json_mode, tree_mode, width, findings, eval_filter):
+    store = _store()
+    platform, sid = store.resolve_session_id(session_prefix)
+    from thirdeye.paths import session_dir as _sd
+
+    sd = _sd(store.config.root, platform, sid)
+    reader = store.reader(session_prefix)
     iter_ = reader.iter_events(types=set(types) if types else None)
-    _emit_events(iter_, json_mode=json_mode, tree_mode=tree_mode, width=width)
+
+    findings_map: dict[int | None, list] = _read_findings_map(sd, eval_filter) if findings else {}
+
+    for event in iter_:
+        if json_mode:
+            click.echo(render_event_jsonl(event))
+        elif tree_mode:
+            click.echo(render_event_tree(event))
+        else:
+            click.echo(render_event_terse(event, width=width))
+        if findings:
+            seq = event.get("seq") if isinstance(event, dict) else None
+            if isinstance(seq, int):
+                _print_findings_for_seq(seq, findings_map)
+
+    if findings and findings_map.get(None):
+        click.echo("=== Session-level findings ===")
+        _print_findings_for_seq(None, findings_map)
 
 
 @click.command(help="Show all events for a session (alias of `events`).")
@@ -126,8 +182,22 @@ def tail(session_prefix, n, json_mode, tree_mode, width):
 @click.argument("session_prefix")
 @click.argument("seq", type=int)
 @click.option("--field", default=None, help="Print only one field of `data`.")
-def event(session_prefix, seq, field):
-    e = _store().reader(session_prefix).get_event(seq)
+@click.option(
+    "--findings/--no-findings",
+    default=True,
+    show_default=True,
+    help="Annotate output with per-event findings from evals.jsonl.",
+)
+@click.option(
+    "--eval",
+    "eval_filter",
+    default=None,
+    help="Only show findings from this eval definition.",
+)
+def event(session_prefix, seq, field, findings, eval_filter):
+    store = _store()
+    platform, sid = store.resolve_session_id(session_prefix)
+    e = store.reader(session_prefix).get_event(seq)
     if field is not None:
         data = e.get("data")
         if isinstance(data, dict) and field in data:
@@ -139,6 +209,12 @@ def event(session_prefix, seq, field):
             return
         raise click.ClickException(f"field {field!r} not found in event data")
     click.echo(json.dumps(e, default=str, ensure_ascii=False, indent=2))
+    if findings:
+        from thirdeye.paths import session_dir as _sd
+
+        sd = _sd(store.config.root, platform, sid)
+        findings_map = _read_findings_map(sd, eval_filter)
+        _print_findings_for_seq(seq, findings_map)
 
 
 @click.command(help="Search across sessions.")

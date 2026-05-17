@@ -4,6 +4,7 @@ import click
 
 from thirdeye import __version__
 from thirdeye.commands.add import add, remove
+from thirdeye.commands.eval import eval_group
 from thirdeye.commands.ingest import ingest
 from thirdeye.commands.reads import event, events, list_sessions, search, show, stats, tail
 from thirdeye.commands.skill import skill
@@ -31,3 +32,4 @@ main.add_command(tag)
 main.add_command(tags)
 main.add_command(stats)
 main.add_command(usage)
+main.add_command(eval_group)
