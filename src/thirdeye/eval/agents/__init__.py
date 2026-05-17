@@ -1,4 +1,5 @@
 """Built-in adapters registry plus user YAML override loader."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -16,7 +17,6 @@ from thirdeye.eval.agents.claude import ClaudeAdapter
 from thirdeye.eval.agents.codex import CodexAdapter
 from thirdeye.eval.agents.gemini import GeminiAdapter
 from thirdeye.paths import eval_agents_config_path
-
 
 BUILTIN_ADAPTERS: dict[str, type[AgentAdapter]] = {
     "claude": ClaudeAdapter,

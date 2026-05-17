@@ -119,9 +119,7 @@ def test_install_all_bundled_skills_by_default(
 ) -> None:
     monkeypatch.chdir(tmp_path)
     dest_root = tmp_path / "skills"
-    result = CliRunner().invoke(
-        skill_group, ["install", str(dest_root)], catch_exceptions=False
-    )
+    result = CliRunner().invoke(skill_group, ["install", str(dest_root)], catch_exceptions=False)
     assert result.exit_code == 0
     bundled = _list_bundled_skills()
     assert bundled, "expected at least one bundled skill"

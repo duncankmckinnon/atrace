@@ -28,9 +28,7 @@ def _list_bundled_skills() -> list[str]:
     root = _bundled_skills_root()
     if not root.is_dir():
         return []
-    return sorted(
-        p.name for p in root.iterdir() if p.is_dir() and (p / "SKILL.md").is_file()
-    )
+    return sorted(p.name for p in root.iterdir() if p.is_dir() and (p / "SKILL.md").is_file())
 
 
 def _bundled_skill_root(name: str = "use-thirdeye") -> Path:
@@ -114,6 +112,10 @@ def install(
             )
         # Preserve user-given order but de-dupe.
         names = list(dict.fromkeys(only))
+    elif chosen.name in bundled:
+        # Backwards-compat: TARGET basename matches a bundled skill name →
+        # treat as a single-skill install at the full path.
+        names = [chosen.name]
     else:
         names = bundled
 

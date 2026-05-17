@@ -11,14 +11,18 @@ VALID_SEVERITIES = frozenset({"info", "warn", "error"})
 
 @dataclass(frozen=True)
 class Finding:
-    seq: int | None              # event seq this finding anchors to, or None
-    severity: str                # "info" | "warn" | "error"
+    seq: int | None  # event seq this finding anchors to, or None
+    severity: str  # "info" | "warn" | "error"
     note: str
     category: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        return {"seq": self.seq, "severity": self.severity,
-                "category": self.category, "note": self.note}
+        return {
+            "seq": self.seq,
+            "severity": self.severity,
+            "category": self.category,
+            "note": self.note,
+        }
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> Finding:
@@ -45,7 +49,7 @@ class EvalResult:
     started_at: str
     ended_at: str
     duration_ms: int
-    verdict: str                 # "pass" | "warn" | "fail" | "unknown"
+    verdict: str  # "pass" | "warn" | "fail" | "unknown"
     summary: str
     scores: dict[str, float] = field(default_factory=dict)
     findings: list[Finding] = field(default_factory=list)
@@ -99,5 +103,5 @@ def parse_envelope(agent_text: str) -> tuple[dict[str, Any] | None, str]:
         envelope = json.loads(match.group(1))
     except json.JSONDecodeError:
         return None, agent_text
-    narrative = (agent_text[: match.start()] + agent_text[match.end():]).strip()
+    narrative = (agent_text[: match.start()] + agent_text[match.end() :]).strip()
     return envelope, narrative

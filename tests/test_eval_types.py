@@ -7,6 +7,7 @@ from thirdeye.eval.result import EvalResult, Finding, parse_envelope
 
 # --- Finding ---
 
+
 def test_finding_round_trip():
     f = Finding(seq=42, severity="warn", note="x", category="tokens")
     assert Finding.from_dict(f.to_dict()) == f
@@ -23,6 +24,7 @@ def test_finding_coerces_unknown_severity_to_info():
 
 
 # --- EvalResult ---
+
 
 def _result(**overrides) -> EvalResult:
     base = dict(
@@ -49,11 +51,17 @@ def test_result_round_trip():
 
 
 def test_result_coerces_unknown_verdict_to_unknown():
-    r = EvalResult.from_dict({
-        "id": "x", "session_id": "s", "definition": "d", "agent": "a",
-        "started_at": "t", "ended_at": "t",
-        "verdict": "weird",
-    })
+    r = EvalResult.from_dict(
+        {
+            "id": "x",
+            "session_id": "s",
+            "definition": "d",
+            "agent": "a",
+            "started_at": "t",
+            "ended_at": "t",
+            "verdict": "weird",
+        }
+    )
     assert r.verdict == "unknown"
 
 
@@ -63,6 +71,7 @@ def test_result_empty_collections_default():
 
 
 # --- parse_envelope ---
+
 
 def test_parse_envelope_extracts_json_and_narrative():
     text = '```json\n{"verdict": "pass", "summary": "ok"}\n```\n\nFollowed by narrative.'
@@ -78,13 +87,13 @@ def test_parse_envelope_returns_none_when_no_fence():
 
 
 def test_parse_envelope_returns_none_on_malformed_json():
-    env, narrative = parse_envelope('```json\n{not valid}\n```')
+    env, narrative = parse_envelope("```json\n{not valid}\n```")
     assert env is None
     assert "not valid" in narrative
 
 
 def test_parse_envelope_keeps_narrative_before_fence():
-    text = "Preamble.\n\n```json\n{\"verdict\": \"pass\"}\n```\n"
+    text = 'Preamble.\n\n```json\n{"verdict": "pass"}\n```\n'
     env, narrative = parse_envelope(text)
     assert env == {"verdict": "pass"}
     assert "Preamble" in narrative
@@ -97,6 +106,7 @@ def test_parse_envelope_empty_input():
 
 
 # --- ulid_now ---
+
 
 def test_ulid_format():
     u = ulid_now()

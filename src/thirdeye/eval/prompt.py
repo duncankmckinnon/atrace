@@ -67,17 +67,14 @@ def build_prompt(
         blocks.append("")
     else:
         blocks.append("=== Event timeline ===")
-        blocks.append(
-            f"(not pre-rendered — use `thirdeye events {session_id}` to inspect)"
-        )
+        blocks.append(f"(not pre-rendered — use `thirdeye events {session_id}` to inspect)")
         blocks.append("")
 
     db = usage_db_path(thirdeye_home)
     blocks.append("=== Tool inventory ===")
     blocks.append("You have read-only access to:")
     blocks.append(
-        "- `thirdeye` CLI: list, events, show, tail, event, search, "
-        "tag, tags, stats, usage"
+        "- `thirdeye` CLI: list, events, show, tail, event, search, " "tag, tags, stats, usage"
     )
     blocks.append(f"- `sqlite3 {db}`")
     blocks.append("- `jq`, `Read`")
@@ -95,10 +92,15 @@ def _render_meta(sd: Path, platform: str, session_id: str) -> list[str]:
         f"platform:   {platform}",
     ]
     try:
+        import yaml
+
         from thirdeye.meta import read_meta
 
         m = read_meta(meta_path(sd))
-    except (OSError, ImportError):
+    except (OSError, ImportError, TypeError, ValueError, yaml.YAMLError):
+        return lines
+    except Exception:
+        # Last-resort guard — build_prompt must never raise on bad metadata.
         return lines
     if m is None:
         return lines
@@ -142,9 +144,7 @@ def _render_usage_summary(sd: Path) -> list[str]:
         return []
     lines = [f"turns: {turns}"]
     if models:
-        lines.append(
-            "models: " + ", ".join(f"{m} ({n} turns)" for m, n in models.most_common())
-        )
+        lines.append("models: " + ", ".join(f"{m} ({n} turns)" for m, n in models.most_common()))
     lines.append(f"total_input_tokens:  {total_in:,}")
     lines.append(f"total_output_tokens: {total_out:,}")
     lines.append(f"total_tokens:        {total:,}")

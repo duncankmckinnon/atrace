@@ -41,10 +41,12 @@ def test_allowed_tools_are_read_only():
 
 def test_parse_output_extracts_text_and_cost():
     a = ClaudeAdapter()
-    raw = json.dumps({
-        "result": "the agent's reply",
-        "cost_usd": {"input_tokens": 1000, "output_tokens": 50, "usd": 0.012},
-    })
+    raw = json.dumps(
+        {
+            "result": "the agent's reply",
+            "cost_usd": {"input_tokens": 1000, "output_tokens": 50, "usd": 0.012},
+        }
+    )
     text, cost = a.parse_output(raw)
     assert text == "the agent's reply"
     assert cost == {"input_tokens": 1000, "output_tokens": 50, "usd": 0.012}

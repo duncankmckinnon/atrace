@@ -45,7 +45,7 @@ class AgentConfig:
         return entry
 
     @classmethod
-    def from_dict(cls, entry: dict[str, Any], default_command: str = "") -> "AgentConfig":
+    def from_dict(cls, entry: dict[str, Any], default_command: str = "") -> AgentConfig:
         return cls(
             command=entry.get("command", default_command) or default_command,
             args=list(entry.get("args", ["{prompt}"])),
@@ -96,5 +96,5 @@ class ConfigAdapter(AgentAdapter):
     config: AgentConfig
 
     @classmethod
-    def from_config(cls, name: str, entry: dict[str, Any]) -> "ConfigAdapter":
+    def from_config(cls, name: str, entry: dict[str, Any]) -> ConfigAdapter:
         return cls(name=name, config=AgentConfig.from_dict(entry, default_command=name))

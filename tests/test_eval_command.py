@@ -58,15 +58,23 @@ def test_run_dispatch_invokes_runner(home: Path, monkeypatch):
     def fake_run_eval(**kw):
         captured.update(kw)
         return EvalResult(
-            id="X", session_id="abc123", definition="test", agent="claude",
-            agent_model="", agent_session_id=None,
-            started_at="t", ended_at="t", duration_ms=10,
-            verdict="pass", summary="great",
+            id="X",
+            session_id="abc123",
+            definition="test",
+            agent="claude",
+            agent_model="",
+            agent_session_id=None,
+            started_at="t",
+            ended_at="t",
+            duration_ms=10,
+            verdict="pass",
+            summary="great",
         )
+
     monkeypatch.setattr("thirdeye.commands.eval.run_eval", fake_run_eval)
-    result = CliRunner().invoke(eval_group, ["run", "abc", "--agent", "claude",
-                                              "--using", "test"],
-                                catch_exceptions=False)
+    result = CliRunner().invoke(
+        eval_group, ["run", "abc", "--agent", "claude", "--using", "test"], catch_exceptions=False
+    )
     assert result.exit_code == 0, result.output
     assert "VERDICT: pass" in result.output
     assert captured["definition_name"] == "test"
@@ -79,13 +87,12 @@ def test_run_rejects_unknown_agent(home: Path):
 
 
 def test_run_background_prints_job_id(home: Path, monkeypatch):
-    monkeypatch.setattr(
-        "thirdeye.commands.eval.run_eval_background",
-        lambda **kw: "01J7BG"
+    monkeypatch.setattr("thirdeye.commands.eval.run_eval_background", lambda **kw: "01J7BG")
+    result = CliRunner().invoke(
+        eval_group,
+        ["run", "abc", "--agent", "claude", "--using", "test", "--background"],
+        catch_exceptions=False,
     )
-    result = CliRunner().invoke(eval_group, ["run", "abc", "--agent", "claude",
-                                              "--using", "test", "--background"],
-                                catch_exceptions=False)
     assert result.exit_code == 0
     assert "01J7BG" in result.output
 
@@ -100,8 +107,7 @@ def test_show_latest(home: Path):
 def test_show_by_id(home: Path):
     _seed_result(home, "abc123", id="ID-A", summary="first")
     _seed_result(home, "abc123", id="ID-B", summary="second")
-    result = CliRunner().invoke(eval_group, ["show", "abc", "--id", "ID-A"],
-                                catch_exceptions=False)
+    result = CliRunner().invoke(eval_group, ["show", "abc", "--id", "ID-A"], catch_exceptions=False)
     assert result.exit_code == 0
     assert "first" in result.output
     assert "second" not in result.output
@@ -118,7 +124,8 @@ def test_list_filters(home: Path):
     _seed_result(home, "abc123", id="B", verdict="fail", definition="test")
     _seed_result(home, "abc123", id="C", verdict="pass", definition="other")
     result = CliRunner().invoke(
-        eval_group, ["list", "--verdict", "pass", "--using", "test", "--json"],
+        eval_group,
+        ["list", "--verdict", "pass", "--using", "test", "--json"],
         catch_exceptions=False,
     )
     assert result.exit_code == 0
@@ -134,11 +141,18 @@ def test_status_no_jobs(home: Path):
 
 def test_status_orphan_detection(home: Path):
     sd = session_dir(home, "claude", "abc123")
-    EvalStore(sd).write_job("J1", {
-        "job_id": "J1", "session_id": "abc123", "using": "test",
-        "agent": "claude", "status": "running", "started_at": "t",
-        "pid": 99999999,  # almost certainly not running
-    })
+    EvalStore(sd).write_job(
+        "J1",
+        {
+            "job_id": "J1",
+            "session_id": "abc123",
+            "using": "test",
+            "agent": "claude",
+            "status": "running",
+            "started_at": "t",
+            "pid": 99999999,  # almost certainly not running
+        },
+    )
     result = CliRunner().invoke(eval_group, ["status", "abc"], catch_exceptions=False)
     assert result.exit_code == 0
     assert "orphaned" in result.output
@@ -152,8 +166,7 @@ def test_def_list_shows_shipped(home: Path):
 
 
 def test_def_show_default(home: Path):
-    result = CliRunner().invoke(eval_group, ["def", "show", "default"],
-                                catch_exceptions=False)
+    result = CliRunner().invoke(eval_group, ["def", "show", "default"], catch_exceptions=False)
     assert result.exit_code == 0
     assert "name: default" in result.output
 
@@ -161,15 +174,13 @@ def test_def_show_default(home: Path):
 def test_def_create_with_directive(home: Path):
     result = CliRunner().invoke(
         eval_group,
-        ["def", "create", "my-eval", "--directive", "evaluate X",
-         "--description", "custom"],
+        ["def", "create", "my-eval", "--directive", "evaluate X", "--description", "custom"],
         catch_exceptions=False,
     )
     assert result.exit_code == 0
     assert "Created" in result.output
     # Verify it loads
-    result2 = CliRunner().invoke(eval_group, ["def", "show", "my-eval"],
-                                 catch_exceptions=False)
+    result2 = CliRunner().invoke(eval_group, ["def", "show", "my-eval"], catch_exceptions=False)
     assert "evaluate X" in result2.output
 
 
@@ -190,8 +201,7 @@ def test_def_create_rejects_multiple_sources(home: Path):
 def test_def_rm_shipped_allows_restore(home: Path):
     # Materialize shipped 'default'
     CliRunner().invoke(eval_group, ["def", "show", "default"], catch_exceptions=False)
-    result = CliRunner().invoke(eval_group, ["def", "rm", "default"],
-                                catch_exceptions=False)
+    result = CliRunner().invoke(eval_group, ["def", "rm", "default"], catch_exceptions=False)
     assert result.exit_code == 0
     assert "shipped version restored" in result.output
 

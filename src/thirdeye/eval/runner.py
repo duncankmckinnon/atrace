@@ -5,7 +5,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -32,7 +32,7 @@ class AgentInvocation:
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _condense_event_line(seq: int, t: str, data: dict[str, Any]) -> str:
@@ -52,9 +52,7 @@ def _condense_event_line(seq: int, t: str, data: dict[str, Any]) -> str:
     return f"{seq:<4} {t:<20} {snippet}"
 
 
-def _read_timeline(
-    thirdeye_home: Path, platform: str, sid: str, *, limit: int = 500
-) -> list[str]:
+def _read_timeline(thirdeye_home: Path, platform: str, sid: str, *, limit: int = 500) -> list[str]:
     """Read up to ``limit`` events from the session log and condense each line.
 
     Best-effort; on read error returns ``[]``.
@@ -92,17 +90,14 @@ def _list_session_ids_on_platform(thirdeye_home: Path, platform: str) -> set[str
 def _invoke_agent(adapter: AgentAdapter, prompt: str, cwd: Path) -> AgentInvocation:
     """Run the agent subprocess and capture stdout/stderr/returncode."""
     if shutil.which(adapter.config.command) is None:
-        raise FileNotFoundError(
-            f"`{adapter.config.command}` not found on PATH — install it first"
-        )
+        raise FileNotFoundError(f"`{adapter.config.command}` not found on PATH — install it first")
     cmd = adapter.build_command(prompt, cwd)
     t0 = time.monotonic()
     proc = subprocess.run(
         cmd,
         cwd=cwd,
         stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
         check=False,
     )
@@ -153,9 +148,7 @@ def _build_eval_result(
         verdict = "unknown"
     scores = {str(k): float(v) for k, v in (envelope.get("scores") or {}).items()}
     findings = [
-        Finding.from_dict(f)
-        for f in (envelope.get("findings") or [])
-        if isinstance(f, dict)
+        Finding.from_dict(f) for f in (envelope.get("findings") or []) if isinstance(f, dict)
     ]
     return EvalResult(
         id=eval_id,

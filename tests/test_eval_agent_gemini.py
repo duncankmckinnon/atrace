@@ -37,10 +37,12 @@ def test_build_command_does_not_use_yolo():
 
 
 def test_parse_output_extracts_response_and_stats():
-    raw = json.dumps({
-        "response": "the agent's reply",
-        "stats": {"promptTokenCount": 1000, "candidatesTokenCount": 50},
-    })
+    raw = json.dumps(
+        {
+            "response": "the agent's reply",
+            "stats": {"promptTokenCount": 1000, "candidatesTokenCount": 50},
+        }
+    )
     text, cost = GeminiAdapter().parse_output(raw)
     assert text == "the agent's reply"
     assert cost == {"promptTokenCount": 1000, "candidatesTokenCount": 50}

@@ -60,8 +60,7 @@ def test_save_rejects_existing_without_force(tmp_path: Path):
 def test_save_with_force_overwrites(tmp_path: Path):
     defn = EvalDefinition(name="x", description="", directive="v1")
     save_definition(tmp_path, defn)
-    save_definition(tmp_path, EvalDefinition(name="x", description="", directive="v2"),
-                    force=True)
+    save_definition(tmp_path, EvalDefinition(name="x", description="", directive="v2"), force=True)
     assert load_definition(tmp_path, "x").directive == "v2"
 
 
@@ -93,8 +92,11 @@ def test_list_includes_shipped_and_user(tmp_path: Path):
 
 def test_definition_round_trip_via_yaml(tmp_path: Path):
     defn = EvalDefinition(
-        name="rt", description="round trip", directive="evaluate",
-        default_agent="codex", output_schema="v1",
+        name="rt",
+        description="round trip",
+        directive="evaluate",
+        default_agent="codex",
+        output_schema="v1",
     )
     save_definition(tmp_path, defn)
     assert load_definition(tmp_path, "rt") == defn

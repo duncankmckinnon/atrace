@@ -43,11 +43,10 @@ def _parse_when_or_die(value: str | None, flag: str):
         raise click.ClickException(f"could not parse {flag} {value!r}: {e}") from e
 
 
-def _read_findings_map(
-    session_dir_: Path, eval_filter: str | None
-) -> dict[int | None, list]:
+def _read_findings_map(session_dir_: Path, eval_filter: str | None) -> dict[int | None, list]:
     """Return a map from seq (or None) to a list of (definition_name, Finding)."""
     from thirdeye.eval.store import EvalStore
+
     out: dict[int | None, list] = {}
     for result in EvalStore(session_dir_).iter_results():
         if eval_filter is not None and result.definition != eval_filter:
@@ -133,13 +132,12 @@ def events(session_prefix, types, json_mode, tree_mode, width, findings, eval_fi
     store = _store()
     platform, sid = store.resolve_session_id(session_prefix)
     from thirdeye.paths import session_dir as _sd
+
     sd = _sd(store.config.root, platform, sid)
     reader = store.reader(session_prefix)
     iter_ = reader.iter_events(types=set(types) if types else None)
 
-    findings_map: dict[int | None, list] = (
-        _read_findings_map(sd, eval_filter) if findings else {}
-    )
+    findings_map: dict[int | None, list] = _read_findings_map(sd, eval_filter) if findings else {}
 
     for event in iter_:
         if json_mode:
@@ -213,6 +211,7 @@ def event(session_prefix, seq, field, findings, eval_filter):
     click.echo(json.dumps(e, default=str, ensure_ascii=False, indent=2))
     if findings:
         from thirdeye.paths import session_dir as _sd
+
         sd = _sd(store.config.root, platform, sid)
         findings_map = _read_findings_map(sd, eval_filter)
         _print_findings_for_seq(seq, findings_map)

@@ -37,13 +37,17 @@ def test_get_with_no_home_skips_overrides():
 def test_user_override_replaces_builtin(tmp_path: Path):
     cfg = eval_agents_config_path(tmp_path)
     cfg.parent.mkdir(parents=True, exist_ok=True)
-    cfg.write_text(yaml.safe_dump({
-        "claude": {
-            "command": "my-claude",
-            "args": ["--custom", "{prompt}"],
-            "output_format": "text",
-        }
-    }))
+    cfg.write_text(
+        yaml.safe_dump(
+            {
+                "claude": {
+                    "command": "my-claude",
+                    "args": ["--custom", "{prompt}"],
+                    "output_format": "text",
+                }
+            }
+        )
+    )
     a = get_adapter("claude", thirdeye_home=tmp_path)
     assert a.config.command == "my-claude"
     assert "--custom" in a.config.args
@@ -52,12 +56,16 @@ def test_user_override_replaces_builtin(tmp_path: Path):
 def test_user_can_define_new_agent(tmp_path: Path):
     cfg = eval_agents_config_path(tmp_path)
     cfg.parent.mkdir(parents=True, exist_ok=True)
-    cfg.write_text(yaml.safe_dump({
-        "myagent": {
-            "command": "myagent",
-            "args": ["-p", "{prompt}"],
-        }
-    }))
+    cfg.write_text(
+        yaml.safe_dump(
+            {
+                "myagent": {
+                    "command": "myagent",
+                    "args": ["-p", "{prompt}"],
+                }
+            }
+        )
+    )
     a = get_adapter("myagent", thirdeye_home=tmp_path)
     assert a.name == "myagent"
     assert a.config.command == "myagent"
@@ -71,9 +79,13 @@ def test_list_agent_names_builtins_only():
 def test_list_agent_names_includes_overrides(tmp_path: Path):
     cfg = eval_agents_config_path(tmp_path)
     cfg.parent.mkdir(parents=True, exist_ok=True)
-    cfg.write_text(yaml.safe_dump({
-        "myagent": {"command": "myagent", "args": ["{prompt}"]},
-    }))
+    cfg.write_text(
+        yaml.safe_dump(
+            {
+                "myagent": {"command": "myagent", "args": ["{prompt}"]},
+            }
+        )
+    )
     assert list_agent_names(tmp_path) == ["claude", "codex", "gemini", "myagent"]
 
 
@@ -88,8 +100,12 @@ def test_malformed_overrides_yaml_falls_back_to_builtins(tmp_path: Path):
 def test_non_dict_overrides_ignored(tmp_path: Path):
     cfg = eval_agents_config_path(tmp_path)
     cfg.parent.mkdir(parents=True, exist_ok=True)
-    cfg.write_text(yaml.safe_dump({
-        "claude": "not a dict — should be skipped",
-    }))
+    cfg.write_text(
+        yaml.safe_dump(
+            {
+                "claude": "not a dict — should be skipped",
+            }
+        )
+    )
     a = get_adapter("claude", thirdeye_home=tmp_path)
     assert isinstance(a, ClaudeAdapter)

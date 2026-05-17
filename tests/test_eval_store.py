@@ -35,6 +35,7 @@ def session(tmp_path: Path) -> Path:
 
 # --- evals.jsonl ---
 
+
 def test_append_and_iter(session: Path):
     store = EvalStore(session)
     store.append(_result(id="a"))
@@ -102,6 +103,7 @@ def test_append_preserves_findings(session: Path):
 
 
 # --- job stubs ---
+
 
 def test_write_read_job(session: Path):
     store = EvalStore(session)

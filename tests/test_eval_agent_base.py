@@ -12,8 +12,8 @@ from thirdeye.eval.agents.base import (
     OutputFormat,
 )
 
-
 # --- AgentConfig ---
+
 
 def test_config_defaults():
     c = AgentConfig(command="x", args=["{prompt}"])
@@ -49,8 +49,13 @@ def test_config_to_dict_text_omits_json_keys():
 
 
 def test_config_to_dict_json_includes_keys():
-    c = AgentConfig(command="x", args=["{prompt}"], output_format="json",
-                    json_result_key="foo", json_cost_key="bar")
+    c = AgentConfig(
+        command="x",
+        args=["{prompt}"],
+        output_format="json",
+        json_result_key="foo",
+        json_cost_key="bar",
+    )
     d = c.to_dict()
     assert d["json_result_key"] == "foo"
     assert d["json_cost_key"] == "bar"
@@ -63,6 +68,7 @@ def test_config_from_dict_uses_default_command_when_missing():
 
 # --- AgentAdapter (via ConfigAdapter) ---
 
+
 def test_build_command_substitutes_prompt():
     c = ConfigAdapter(name="x", config=AgentConfig(command="x", args=["-p", "{prompt}"]))
     cmd = c.build_command("hello", Path("/tmp"))
@@ -70,9 +76,7 @@ def test_build_command_substitutes_prompt():
 
 
 def test_build_command_with_extra_flags():
-    c = ConfigAdapter(name="x", config=AgentConfig(
-        command="x", args=["-p", "{prompt}", "--flag"]
-    ))
+    c = ConfigAdapter(name="x", config=AgentConfig(command="x", args=["-p", "{prompt}", "--flag"]))
     cmd = c.build_command("h", Path("/"))
     assert cmd == ["x", "-p", "h", "--flag"]
 
@@ -85,10 +89,16 @@ def test_parse_output_text_strips_whitespace():
 
 
 def test_parse_output_json_extracts_result_and_cost():
-    c = ConfigAdapter(name="x", config=AgentConfig(
-        command="x", args=["{prompt}"], output_format="json",
-        json_result_key="result", json_cost_key="cost_usd",
-    ))
+    c = ConfigAdapter(
+        name="x",
+        config=AgentConfig(
+            command="x",
+            args=["{prompt}"],
+            output_format="json",
+            json_result_key="result",
+            json_cost_key="cost_usd",
+        ),
+    )
     raw = json.dumps({"result": "the answer", "cost_usd": {"usd": 0.01}})
     text, cost = c.parse_output(raw)
     assert text == "the answer"
@@ -96,18 +106,28 @@ def test_parse_output_json_extracts_result_and_cost():
 
 
 def test_parse_output_json_falls_back_on_decode_error():
-    c = ConfigAdapter(name="x", config=AgentConfig(
-        command="x", args=["{prompt}"], output_format="json",
-    ))
+    c = ConfigAdapter(
+        name="x",
+        config=AgentConfig(
+            command="x",
+            args=["{prompt}"],
+            output_format="json",
+        ),
+    )
     text, cost = c.parse_output("not json")
     assert text == "not json"
     assert cost == {}
 
 
 def test_parse_output_json_non_dict_cost_becomes_empty():
-    c = ConfigAdapter(name="x", config=AgentConfig(
-        command="x", args=["{prompt}"], output_format="json",
-    ))
+    c = ConfigAdapter(
+        name="x",
+        config=AgentConfig(
+            command="x",
+            args=["{prompt}"],
+            output_format="json",
+        ),
+    )
     raw = json.dumps({"result": "ok", "cost_usd": 42})  # cost not a dict
     text, cost = c.parse_output(raw)
     assert text == "ok"
@@ -116,12 +136,16 @@ def test_parse_output_json_non_dict_cost_becomes_empty():
 
 # --- ConfigAdapter.from_config ---
 
+
 def test_config_adapter_from_yaml_entry():
-    a = ConfigAdapter.from_config("myagent", {
-        "command": "myagent",
-        "args": ["-p", "{prompt}"],
-        "output_format": "json",
-    })
+    a = ConfigAdapter.from_config(
+        "myagent",
+        {
+            "command": "myagent",
+            "args": ["-p", "{prompt}"],
+            "output_format": "json",
+        },
+    )
     assert a.name == "myagent"
     assert a.config.command == "myagent"
     assert a.config.output_format == OutputFormat.JSON
@@ -129,11 +153,18 @@ def test_config_adapter_from_yaml_entry():
 
 # --- Additional coverage ---
 
+
 def test_adapter_to_config_round_trips_via_config():
-    a = ConfigAdapter(name="x", config=AgentConfig(
-        command="x", args=["-p", "{prompt}"], output_format="json",
-        json_result_key="r", json_cost_key="c",
-    ))
+    a = ConfigAdapter(
+        name="x",
+        config=AgentConfig(
+            command="x",
+            args=["-p", "{prompt}"],
+            output_format="json",
+            json_result_key="r",
+            json_cost_key="c",
+        ),
+    )
     d = a.to_config()
     assert d == {
         "command": "x",
@@ -186,10 +217,15 @@ def test_config_rejects_prompt_as_substring_only():
 
 
 def test_parse_output_json_missing_result_key_returns_raw():
-    c = ConfigAdapter(name="x", config=AgentConfig(
-        command="x", args=["{prompt}"], output_format="json",
-        json_result_key="missing",
-    ))
+    c = ConfigAdapter(
+        name="x",
+        config=AgentConfig(
+            command="x",
+            args=["{prompt}"],
+            output_format="json",
+            json_result_key="missing",
+        ),
+    )
     raw = json.dumps({"other": "value"})
     text, cost = c.parse_output(raw)
     assert text == raw
@@ -205,4 +241,5 @@ def test_output_format_enum_string_values():
 def test_agent_adapter_is_abstract_base_marker():
     # ABC import path — confirm exposed
     from thirdeye.eval.agents.base import AgentAdapter as AA
+
     assert AA is AgentAdapter

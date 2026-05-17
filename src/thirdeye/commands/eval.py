@@ -33,14 +33,13 @@ def eval_group() -> None:
 
 @eval_group.command(name="run")
 @click.argument("session_prefix")
-@click.option("--using", default="default", show_default=True,
-              help="Eval definition name.")
+@click.option("--using", default="default", show_default=True, help="Eval definition name.")
 @click.option("--agent", required=True, help="Agent CLI to dispatch.")
-@click.option("--background", "background", is_flag=True,
-              help="Detach. Print job_id, exit 0.")
+@click.option("--background", "background", is_flag=True, help="Detach. Print job_id, exit 0.")
 @click.option("--json", "as_json", is_flag=True, help="Print result as JSON.")
-@click.option("--save/--no-save", default=True, show_default=True,
-              help="Persist to <session>/evals.jsonl.")
+@click.option(
+    "--save/--no-save", default=True, show_default=True, help="Persist to <session>/evals.jsonl."
+)
 def run_cmd(session_prefix, using, agent, background, as_json, save):
     config = Config.load()
     try:
@@ -57,8 +56,11 @@ def run_cmd(session_prefix, using, agent, background, as_json, save):
     if background:
         try:
             job_id = run_eval_background(
-                thirdeye_home=config.root, platform=platform, session_id=sid,
-                definition_name=using, agent_name=agent,
+                thirdeye_home=config.root,
+                platform=platform,
+                session_id=sid,
+                definition_name=using,
+                agent_name=agent,
             )
         except (FileNotFoundError, ValueError) as e:
             raise click.ClickException(str(e)) from e
@@ -67,14 +69,19 @@ def run_cmd(session_prefix, using, agent, background, as_json, save):
 
     try:
         result = run_eval(
-            thirdeye_home=config.root, platform=platform, session_id=sid,
-            definition_name=using, agent_name=agent, save=save,
+            thirdeye_home=config.root,
+            platform=platform,
+            session_id=sid,
+            definition_name=using,
+            agent_name=agent,
+            save=save,
         )
     except (FileNotFoundError, ValueError, RuntimeError) as e:
         raise click.ClickException(str(e)) from e
 
     if as_json:
         import json
+
         click.echo(json.dumps(result.to_dict(), separators=(",", ":")))
     else:
         _render_result(result)
@@ -96,8 +103,12 @@ def _run_worker(job_id, platform, session_id, definition_name, agent_name):
     store = EvalStore(sd)
     try:
         run_eval(
-            thirdeye_home=config.root, platform=platform, session_id=session_id,
-            definition_name=definition_name, agent_name=agent_name, save=True,
+            thirdeye_home=config.root,
+            platform=platform,
+            session_id=session_id,
+            definition_name=definition_name,
+            agent_name=agent_name,
+            save=True,
         )
         store.remove_job(job_id)
     except Exception as e:
@@ -133,6 +144,7 @@ def show_cmd(session_prefix, eval_id, using, as_json):
             raise click.ClickException(f"no eval results for session {sid}")
     if as_json:
         import json
+
         click.echo(json.dumps(result.to_dict(), separators=(",", ":")))
     else:
         _render_result(result)
@@ -145,8 +157,7 @@ def show_cmd(session_prefix, eval_id, using, as_json):
 @click.argument("session_prefix", required=False)
 @click.option("--using", default=None)
 @click.option("--agent", default=None)
-@click.option("--verdict", default=None,
-              type=click.Choice(["pass", "warn", "fail", "unknown"]))
+@click.option("--verdict", default=None, type=click.Choice(["pass", "warn", "fail", "unknown"]))
 @click.option("--since", default=None)
 @click.option("--until", default=None)
 @click.option("--json", "as_json", is_flag=True)
@@ -194,6 +205,7 @@ def list_cmd(session_prefix, using, agent, verdict, since, until, as_json):
 
     if as_json:
         import json
+
         for r in rows:
             click.echo(json.dumps(r.to_dict(), separators=(",", ":")))
         return
@@ -246,6 +258,7 @@ def status_cmd(session_prefix, as_json):
 
     if as_json:
         import json
+
         for j in jobs:
             click.echo(json.dumps(j, separators=(",", ":")))
         return
@@ -253,8 +266,7 @@ def status_cmd(session_prefix, as_json):
         click.echo("No background eval jobs.")
         return
     click.echo(
-        f"{'JOB':<28} {'SESSION':<14} {'USING':<18} {'AGENT':<8} "
-        f"{'STATUS':<10} {'STARTED':<26}"
+        f"{'JOB':<28} {'SESSION':<14} {'USING':<18} {'AGENT':<8} " f"{'STATUS':<10} {'STARTED':<26}"
     )
     for j in jobs:
         click.echo(
@@ -308,16 +320,20 @@ def def_show_cmd(name):
 @def_group.command(name="create")
 @click.argument("name")
 @click.option("--directive", default=None, help="Inline directive text.")
-@click.option("--directive-file", "directive_file",
-              type=click.Path(exists=True, dir_okay=False, path_type=Path),
-              default=None, help="Read directive from FILE.")
-@click.option("--from", "from_name", default=None,
-              help="Copy directive from an existing definition.")
+@click.option(
+    "--directive-file",
+    "directive_file",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Read directive from FILE.",
+)
+@click.option(
+    "--from", "from_name", default=None, help="Copy directive from an existing definition."
+)
 @click.option("--description", default="", help="Short description.")
 @click.option("--default-agent", default="claude", show_default=True)
 @click.option("--force", is_flag=True, help="Overwrite if exists.")
-def def_create_cmd(name, directive, directive_file, from_name, description,
-                   default_agent, force):
+def def_create_cmd(name, directive, directive_file, from_name, description, default_agent, force):
     sources = [bool(directive), bool(directive_file), bool(from_name)]
     if sum(sources) != 1:
         raise click.ClickException(
@@ -335,8 +351,11 @@ def def_create_cmd(name, directive, directive_file, from_name, description,
     else:
         text = directive
     defn = EvalDefinition(
-        name=name, description=description, directive=text,
-        default_agent=default_agent, output_schema="v1",
+        name=name,
+        description=description,
+        directive=text,
+        default_agent=default_agent,
+        output_schema="v1",
     )
     try:
         path = save_definition(config.root, defn, force=force)
@@ -354,6 +373,7 @@ def def_edit_cmd(name):
     except FileNotFoundError as e:
         raise click.ClickException(str(e)) from e
     from thirdeye.paths import eval_def_path
+
     path = eval_def_path(config.root, name)
     click.edit(filename=str(path))
 

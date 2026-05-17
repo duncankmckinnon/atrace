@@ -22,13 +22,16 @@ def home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     sd = session_dir(tmp_path, "claude", "abc")
     sd.mkdir(parents=True)
     (sd / "meta.yaml").write_text(
-        "schema_version: 1\n"
+        "schema_version: 2\n"
         "session_id: abc\n"
         "platform: claude\n"
         "cwd: /x\n"
         "started_at: 2026-05-16T00:00:00Z\n"
+        "ended_at: null\n"
         "status: open\n"
         "event_count: 1\n"
+        "last_seq: -1\n"
+        "last_ts: null\n"
     )
     cfg = eval_def_path(tmp_path, "test")
     cfg.parent.mkdir(parents=True, exist_ok=True)
@@ -57,9 +60,7 @@ def _make_canned_output(envelope: dict, narrative: str = "narrative body") -> st
     )
 
 
-def test_run_eval_persists_and_returns_result(
-    home: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_run_eval_persists_and_returns_result(home: Path, monkeypatch: pytest.MonkeyPatch):
     canned = _make_canned_output(
         {
             "verdict": "pass",
@@ -74,9 +75,7 @@ def test_run_eval_persists_and_returns_result(
 
     monkeypatch.setattr("thirdeye.eval.runner._invoke_agent", fake_invoke)
     monkeypatch.setattr("thirdeye.eval.runner._read_timeline", lambda *a, **k: [])
-    monkeypatch.setattr(
-        "thirdeye.eval.runner._list_session_ids_on_platform", lambda h, p: set()
-    )
+    monkeypatch.setattr("thirdeye.eval.runner._list_session_ids_on_platform", lambda h, p: set())
 
     result = run_eval(
         thirdeye_home=home,
@@ -95,9 +94,7 @@ def test_run_eval_persists_and_returns_result(
     assert persisted[0].id == result.id
 
 
-def test_run_eval_no_save_skips_persistence(
-    home: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_run_eval_no_save_skips_persistence(home: Path, monkeypatch: pytest.MonkeyPatch):
     canned = _make_canned_output(
         {"verdict": "pass", "summary": "ok", "scores": {}, "findings": []},
     )
@@ -106,9 +103,7 @@ def test_run_eval_no_save_skips_persistence(
         lambda a, p, c: AgentInvocation(canned, "", 0, 10),
     )
     monkeypatch.setattr("thirdeye.eval.runner._read_timeline", lambda *a, **k: [])
-    monkeypatch.setattr(
-        "thirdeye.eval.runner._list_session_ids_on_platform", lambda h, p: set()
-    )
+    monkeypatch.setattr("thirdeye.eval.runner._list_session_ids_on_platform", lambda h, p: set())
 
     run_eval(
         thirdeye_home=home,
@@ -144,14 +139,10 @@ def test_run_eval_unknown_agent_raises(home: Path):
         )
 
 
-def test_run_eval_missing_binary_raises(
-    home: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_run_eval_missing_binary_raises(home: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("shutil.which", lambda x: None)
     monkeypatch.setattr("thirdeye.eval.runner._read_timeline", lambda *a, **k: [])
-    monkeypatch.setattr(
-        "thirdeye.eval.runner._list_session_ids_on_platform", lambda h, p: set()
-    )
+    monkeypatch.setattr("thirdeye.eval.runner._list_session_ids_on_platform", lambda h, p: set())
     with pytest.raises(FileNotFoundError, match="not found on PATH"):
         run_eval(
             thirdeye_home=home,
@@ -162,17 +153,13 @@ def test_run_eval_missing_binary_raises(
         )
 
 
-def test_run_eval_nonzero_exit_raises(
-    home: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_run_eval_nonzero_exit_raises(home: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "thirdeye.eval.runner._invoke_agent",
         lambda a, p, c: AgentInvocation("", "bad things", 1, 10),
     )
     monkeypatch.setattr("thirdeye.eval.runner._read_timeline", lambda *a, **k: [])
-    monkeypatch.setattr(
-        "thirdeye.eval.runner._list_session_ids_on_platform", lambda h, p: set()
-    )
+    monkeypatch.setattr("thirdeye.eval.runner._list_session_ids_on_platform", lambda h, p: set())
     with pytest.raises(RuntimeError, match="exited 1"):
         run_eval(
             thirdeye_home=home,
@@ -183,18 +170,14 @@ def test_run_eval_nonzero_exit_raises(
         )
 
 
-def test_run_eval_no_envelope_yields_unknown_verdict(
-    home: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_run_eval_no_envelope_yields_unknown_verdict(home: Path, monkeypatch: pytest.MonkeyPatch):
     bare = json.dumps({"result": "just text, no fenced json"})
     monkeypatch.setattr(
         "thirdeye.eval.runner._invoke_agent",
         lambda a, p, c: AgentInvocation(bare, "", 0, 10),
     )
     monkeypatch.setattr("thirdeye.eval.runner._read_timeline", lambda *a, **k: [])
-    monkeypatch.setattr(
-        "thirdeye.eval.runner._list_session_ids_on_platform", lambda h, p: set()
-    )
+    monkeypatch.setattr("thirdeye.eval.runner._list_session_ids_on_platform", lambda h, p: set())
     result = run_eval(
         thirdeye_home=home,
         platform="claude",
@@ -207,7 +190,8 @@ def test_run_eval_no_envelope_yields_unknown_verdict(
 
 
 def test_run_eval_links_agent_session_id_when_unambiguous(
-    home: Path, monkeypatch: pytest.MonkeyPatch,
+    home: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ):
     canned = _make_canned_output(
         {"verdict": "pass", "summary": "ok", "scores": {}, "findings": []},
@@ -223,9 +207,7 @@ def test_run_eval_links_agent_session_id_when_unambiguous(
         calls["n"] += 1
         return {"existing"} if calls["n"] == 1 else {"existing", "new-eval-sid"}
 
-    monkeypatch.setattr(
-        "thirdeye.eval.runner._list_session_ids_on_platform", fake_list
-    )
+    monkeypatch.setattr("thirdeye.eval.runner._list_session_ids_on_platform", fake_list)
 
     result = run_eval(
         thirdeye_home=home,
@@ -238,7 +220,8 @@ def test_run_eval_links_agent_session_id_when_unambiguous(
 
 
 def test_run_eval_agent_session_id_null_when_ambiguous(
-    home: Path, monkeypatch: pytest.MonkeyPatch,
+    home: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ):
     canned = _make_canned_output(
         {"verdict": "pass", "summary": "ok", "scores": {}, "findings": []},
@@ -254,9 +237,7 @@ def test_run_eval_agent_session_id_null_when_ambiguous(
         calls["n"] += 1
         return set() if calls["n"] == 1 else {"a", "b"}
 
-    monkeypatch.setattr(
-        "thirdeye.eval.runner._list_session_ids_on_platform", fake_list
-    )
+    monkeypatch.setattr("thirdeye.eval.runner._list_session_ids_on_platform", fake_list)
 
     result = run_eval(
         thirdeye_home=home,
@@ -269,7 +250,8 @@ def test_run_eval_agent_session_id_null_when_ambiguous(
 
 
 def test_run_eval_background_writes_stub_and_returns_job_id(
-    home: Path, monkeypatch: pytest.MonkeyPatch,
+    home: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ):
     """Background launch writes a job stub immediately and returns the id."""
     recorded: dict = {}

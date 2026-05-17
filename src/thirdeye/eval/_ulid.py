@@ -1,4 +1,5 @@
 """Tiny ULID generator (Crockford base32, time-ordered) — no external deps."""
+
 from __future__ import annotations
 
 import secrets

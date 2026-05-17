@@ -12,9 +12,7 @@ class ClaudeAdapter(AgentAdapter):
     """
 
     name = "claude"
-    ALLOWED_TOOLS = (
-        "Bash(thirdeye *) Bash(sqlite3 *) Bash(jq *) Read Glob Grep"
-    )
+    ALLOWED_TOOLS = "Bash(thirdeye *) Bash(sqlite3 *) Bash(jq *) Read Glob Grep"
 
     def __init__(self) -> None:
         self.config = AgentConfig(

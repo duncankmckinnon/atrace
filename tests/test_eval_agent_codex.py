@@ -21,32 +21,38 @@ def test_build_command_uses_exec_subcommand_and_read_only_sandbox():
 
 
 def test_parse_output_extracts_last_assistant_message():
-    raw = "\n".join([
-        json.dumps({"type": "session_started", "session_id": "x"}),
-        json.dumps({"type": "message", "role": "assistant", "content": "first reply"}),
-        json.dumps({"type": "tool_call", "name": "Read"}),
-        json.dumps({"type": "message", "role": "assistant", "content": "final reply"}),
-    ])
+    raw = "\n".join(
+        [
+            json.dumps({"type": "session_started", "session_id": "x"}),
+            json.dumps({"type": "message", "role": "assistant", "content": "first reply"}),
+            json.dumps({"type": "tool_call", "name": "Read"}),
+            json.dumps({"type": "message", "role": "assistant", "content": "final reply"}),
+        ]
+    )
     text, cost = CodexAdapter().parse_output(raw)
     assert text == "final reply"
     assert cost == {}
 
 
 def test_parse_output_ignores_user_messages():
-    raw = "\n".join([
-        json.dumps({"type": "message", "role": "user", "content": "ignored"}),
-        json.dumps({"type": "message", "role": "assistant", "content": "kept"}),
-    ])
+    raw = "\n".join(
+        [
+            json.dumps({"type": "message", "role": "user", "content": "ignored"}),
+            json.dumps({"type": "message", "role": "assistant", "content": "kept"}),
+        ]
+    )
     text, _ = CodexAdapter().parse_output(raw)
     assert text == "kept"
 
 
 def test_parse_output_skips_malformed_lines():
-    raw = "\n".join([
-        "not json",
-        json.dumps({"type": "message", "role": "assistant", "content": "ok"}),
-        "{also broken",
-    ])
+    raw = "\n".join(
+        [
+            "not json",
+            json.dumps({"type": "message", "role": "assistant", "content": "ok"}),
+            "{also broken",
+        ]
+    )
     text, _ = CodexAdapter().parse_output(raw)
     assert text == "ok"
 
@@ -66,9 +72,13 @@ def test_parse_output_empty_input():
 
 
 def test_parse_output_non_string_content_ignored():
-    raw = "\n".join([
-        json.dumps({"type": "message", "role": "assistant", "content": ["array", "not string"]}),
-        json.dumps({"type": "message", "role": "assistant", "content": "fallback"}),
-    ])
+    raw = "\n".join(
+        [
+            json.dumps(
+                {"type": "message", "role": "assistant", "content": ["array", "not string"]}
+            ),
+            json.dumps({"type": "message", "role": "assistant", "content": "fallback"}),
+        ]
+    )
     text, _ = CodexAdapter().parse_output(raw)
     assert text == "fallback"
