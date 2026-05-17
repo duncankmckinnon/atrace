@@ -125,3 +125,84 @@ def test_config_adapter_from_yaml_entry():
     assert a.name == "myagent"
     assert a.config.command == "myagent"
     assert a.config.output_format == OutputFormat.JSON
+
+
+# --- Additional coverage ---
+
+def test_adapter_to_config_round_trips_via_config():
+    a = ConfigAdapter(name="x", config=AgentConfig(
+        command="x", args=["-p", "{prompt}"], output_format="json",
+        json_result_key="r", json_cost_key="c",
+    ))
+    d = a.to_config()
+    assert d == {
+        "command": "x",
+        "args": ["-p", "{prompt}"],
+        "output_format": "json",
+        "json_result_key": "r",
+        "json_cost_key": "c",
+    }
+
+
+def test_from_config_round_trip_preserves_fields():
+    entry = {
+        "command": "agentbin",
+        "args": ["-p", "{prompt}", "--flag"],
+        "output_format": "json",
+        "json_result_key": "out",
+        "json_cost_key": "spend",
+    }
+    a = ConfigAdapter.from_config("agentbin", entry)
+    assert a.to_config() == entry
+
+
+def test_from_config_defaults_when_command_explicitly_empty():
+    # entry has empty string command — `or default_command` kicks in
+    a = ConfigAdapter.from_config("fallback", {"command": "", "args": ["{prompt}"]})
+    assert a.config.command == "fallback"
+
+
+def test_from_dict_missing_args_uses_default_prompt_list():
+    c = AgentConfig.from_dict({"command": "x"})
+    assert c.args == ["{prompt}"]
+
+
+def test_invalid_output_format_string_raises():
+    with pytest.raises(ValueError):
+        AgentConfig(command="x", args=["{prompt}"], output_format="bogus")
+
+
+def test_build_command_with_prompt_containing_spaces():
+    c = ConfigAdapter(name="x", config=AgentConfig(command="x", args=["-p", "{prompt}"]))
+    cmd = c.build_command("hello world with spaces", Path("/tmp"))
+    # prompt stays a single argv element (no shell-splitting)
+    assert cmd == ["x", "-p", "hello world with spaces"]
+
+
+def test_config_rejects_prompt_as_substring_only():
+    # validation requires {prompt} as a standalone list element, not embedded
+    with pytest.raises(ValueError, match="prompt"):
+        AgentConfig(command="x", args=["--input={prompt}"])
+
+
+def test_parse_output_json_missing_result_key_returns_raw():
+    c = ConfigAdapter(name="x", config=AgentConfig(
+        command="x", args=["{prompt}"], output_format="json",
+        json_result_key="missing",
+    ))
+    raw = json.dumps({"other": "value"})
+    text, cost = c.parse_output(raw)
+    assert text == raw
+    assert cost == {}
+
+
+def test_output_format_enum_string_values():
+    # StrEnum subclasses str — values can be compared loosely
+    assert OutputFormat.TEXT == "text"
+    assert OutputFormat.JSON == "json"
+
+
+def test_agent_adapter_is_abstract_base_marker():
+    # ABC import path — confirm exposed
+    from thirdeye.eval.agents.base import AgentAdapter as AA
+    assert AA is AgentAdapter
