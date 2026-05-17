@@ -1,0 +1,20 @@
+name: tool-quality
+description: |
+  Narrow eval focused on tool selection and usage patterns.
+directive: |
+  Evaluate the quality of tool selection and usage in this
+  thirdeye-recorded session. Ignore token spend; focus only on tools.
+
+  Check for:
+  - Wrong tool for the job (e.g. Read+grep when Grep would fit)
+  - Repeated tool calls with near-identical inputs (likely redundant)
+  - Failed tool calls followed by blind retries vs diagnostic recovery
+  - Missed batching opportunities (e.g. many single-file reads)
+  - MCP/tool calls that returned errors and were not addressed
+
+  Use `thirdeye events <sid> --type tool_use` and `thirdeye event <sid> <seq>`
+  to verify. Report findings keyed by event seq.
+
+  Score `tool_quality` (0-10) and `overall` (0-10).
+default_agent: claude
+output_schema: v1

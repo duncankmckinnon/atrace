@@ -1,0 +1,27 @@
+name: default
+description: |
+  General-purpose session evaluator. Looks at token efficiency, tool
+  selection, redundancy, and error recovery as a baseline.
+directive: |
+  You are evaluating a recorded thirdeye session. Judge it against these
+  criteria, drawing on the session context block (timeline + usage summary)
+  and verifying suspicious patterns via the read-only tools listed.
+
+  1. **Token efficiency** — was the spend proportional to the work? Watch
+     for oversized system prompts, repeated reads of the same file, runaway
+     tool-result payloads, repeated re-prompts of the same model.
+  2. **Tool selection** — did the agent pick appropriate tools? Watch for
+     `Read` followed by manual grep instead of `Grep`, repeated `Edit`
+     retries on the same `old_string`, missed batching opportunities.
+  3. **Redundancy** — repeated work that could have been cached, looked up,
+     or batched.
+  4. **Error recovery** — when tools failed, did the agent diagnose and
+     recover, or blindly retry?
+
+  Report findings keyed by event seq where the issue is anchored to a
+  specific turn. Use seq=null only for genuinely session-level
+  observations.
+
+  Score each criterion 0-10 in `scores` and add an `overall` score.
+default_agent: claude
+output_schema: v1
