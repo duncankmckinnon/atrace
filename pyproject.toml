@@ -70,6 +70,8 @@ where = ["src"]
 thirdeye = [
     "skills/use-thirdeye/SKILL.md",
     "skills/use-thirdeye/references/*.md",
+    "skills/use-thirdeye-evals/SKILL.md",
+    "skills/use-thirdeye-evals/references/*.md",
     "eval/defs/*.yaml",
 ]
 
