@@ -3,6 +3,13 @@
 from pathlib import Path
 
 from thirdeye.paths import (
+    eval_agents_config_path,
+    eval_def_path,
+    eval_defs_dir,
+    eval_job_log_path,
+    eval_job_path,
+    evals_jobs_dir,
+    evals_jsonl_path,
     events_path,
     index_path,
     meta_path,
@@ -98,3 +105,38 @@ class TestUsagePaths:
         sd = session_dir(home, "claude", "abc123")
         assert usage_jsonl_path(sd) == home / "traces" / "claude" / "abc123" / "usage.jsonl"
         assert usage_state_path(sd) == home / "traces" / "claude" / "abc123" / "usage.state.json"
+
+
+class TestEvalPaths:
+    def test_evals_jsonl_path(self):
+        sd = Path("/x/.thirdeye/traces/claude/abc")
+        assert evals_jsonl_path(sd) == sd / "evals.jsonl"
+
+    def test_evals_jobs_dir(self):
+        sd = Path("/x/.thirdeye/traces/claude/abc")
+        assert evals_jobs_dir(sd) == sd / "evals.jobs"
+
+    def test_eval_job_path(self):
+        sd = Path("/x/.thirdeye/traces/claude/abc")
+        assert eval_job_path(sd, "01J7XYZ") == sd / "evals.jobs" / "01J7XYZ.json"
+
+    def test_eval_job_log_path(self):
+        sd = Path("/x/.thirdeye/traces/claude/abc")
+        assert eval_job_log_path(sd, "01J7XYZ") == sd / "evals.jobs" / "01J7XYZ.log"
+
+    def test_eval_defs_dir(self):
+        home = Path("/home/user/.thirdeye")
+        assert eval_defs_dir(home) == home / "evals" / "defs"
+
+    def test_eval_def_path(self):
+        home = Path("/home/user/.thirdeye")
+        assert eval_def_path(home, "default") == home / "evals" / "defs" / "default.yaml"
+
+    def test_eval_agents_config_path(self):
+        home = Path("/home/user/.thirdeye")
+        assert eval_agents_config_path(home) == home / "eval-agents.yaml"
+
+    def test_helpers_compose_with_session_dir(self):
+        home = Path("/x/.thirdeye")
+        sd = session_dir(home, "claude", "abc123")
+        assert evals_jsonl_path(sd) == home / "traces" / "claude" / "abc123" / "evals.jsonl"
