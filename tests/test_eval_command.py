@@ -209,3 +209,333 @@ def test_def_rm_shipped_allows_restore(home: Path):
 def test_def_rm_missing_errors(home: Path):
     result = CliRunner().invoke(eval_group, ["def", "rm", "nonexistent"])
     assert result.exit_code != 0
+
+
+# --- _run-worker background entry point ---
+
+def test_run_worker_success_removes_stub_and_appends_result(
+    home: Path, monkeypatch
+):
+    """On successful eval, the worker removes the job stub and the result lives
+    in evals.jsonl (this happens because run_eval(save=True) appends)."""
+    sd = session_dir(home, "claude", "abc123")
+    EvalStore(sd).write_job("JOB1", {
+        "job_id": "JOB1", "session_id": "abc123", "using": "test",
+        "agent": "claude", "platform": "claude", "status": "running",
+        "started_at": "t", "pid": 12345,
+    })
+
+    def fake_run_eval(**kw):
+        # Mimic what run_eval normally does on save=True: append a result.
+        EvalStore(session_dir(kw["thirdeye_home"], kw["platform"], kw["session_id"])).append(
+            EvalResult(
+                id="01J", session_id=kw["session_id"], definition=kw["definition_name"],
+                agent=kw["agent_name"], agent_model="", agent_session_id=None,
+                started_at="t", ended_at="t", duration_ms=10,
+                verdict="pass", summary="ok",
+            )
+        )
+        return None
+    monkeypatch.setattr("thirdeye.commands.eval.run_eval", fake_run_eval)
+
+    result = CliRunner().invoke(
+        eval_group,
+        ["_run-worker", "JOB1", "claude", "abc123", "test", "claude"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    # Stub gone, result persisted
+    assert EvalStore(sd).read_job("JOB1") is None
+    persisted = list(EvalStore(sd).iter_results())
+    assert len(persisted) == 1 and persisted[0].verdict == "pass"
+
+
+def test_run_worker_failure_updates_stub_to_failed(home: Path, monkeypatch):
+    sd = session_dir(home, "claude", "abc123")
+    EvalStore(sd).write_job("JOB2", {
+        "job_id": "JOB2", "session_id": "abc123", "using": "test",
+        "agent": "claude", "platform": "claude", "status": "running",
+        "started_at": "t", "pid": 12345,
+    })
+
+    def fake_run_eval(**kw):
+        raise RuntimeError("agent crashed")
+    monkeypatch.setattr("thirdeye.commands.eval.run_eval", fake_run_eval)
+
+    result = CliRunner().invoke(
+        eval_group,
+        ["_run-worker", "JOB2", "claude", "abc123", "test", "claude"],
+    )
+    # Worker re-raises after writing failed stub — non-zero exit
+    assert result.exit_code != 0
+    stub = EvalStore(sd).read_job("JOB2")
+    assert stub is not None
+    assert stub["status"] == "failed"
+    assert "RuntimeError" in stub["error"]
+    assert "agent crashed" in stub["error"]
+
+
+# --- run --json + RuntimeError wrapping ---
+
+def test_run_json_output(home: Path, monkeypatch):
+    def fake_run_eval(**kw):
+        return EvalResult(
+            id="X", session_id="abc123", definition="test", agent="claude",
+            agent_model="m", agent_session_id=None,
+            started_at="t", ended_at="t", duration_ms=42,
+            verdict="warn", summary="meh",
+            scores={"overall": 6.0},
+        )
+    monkeypatch.setattr("thirdeye.commands.eval.run_eval", fake_run_eval)
+    result = CliRunner().invoke(
+        eval_group,
+        ["run", "abc", "--agent", "claude", "--using", "test", "--json"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    line = json.loads(result.output.strip())
+    assert line["verdict"] == "warn"
+    assert line["scores"] == {"overall": 6.0}
+
+
+def test_run_runtime_error_becomes_click_exception(home: Path, monkeypatch):
+    def boom(**kw):
+        raise RuntimeError("agent 'claude' exited 1: stderr tail")
+    monkeypatch.setattr("thirdeye.commands.eval.run_eval", boom)
+    result = CliRunner().invoke(
+        eval_group, ["run", "abc", "--agent", "claude", "--using", "test"],
+    )
+    assert result.exit_code != 0
+    # Clean ClickException output, no traceback
+    assert "Traceback" not in result.output
+    assert "exited 1" in result.output
+
+
+# --- def edit (materialization side effect) ---
+
+def test_def_edit_materializes_shipped_then_invokes_editor(
+    home: Path, monkeypatch
+):
+    """`def edit default` should ensure the user copy exists before opening EDITOR."""
+    user_path = eval_def_path(home, "default")
+    assert not user_path.exists()
+
+    edited = {}
+    def fake_edit(*, filename):
+        edited["filename"] = filename
+    monkeypatch.setattr("click.edit", fake_edit)
+
+    result = CliRunner().invoke(eval_group, ["def", "edit", "default"],
+                                catch_exceptions=False)
+    assert result.exit_code == 0
+    assert user_path.exists()
+    assert edited["filename"] == str(user_path)
+
+
+def test_def_edit_unknown_errors(home: Path):
+    result = CliRunner().invoke(eval_group, ["def", "edit", "nope"])
+    assert result.exit_code != 0
+    assert "no eval definition" in result.output
+
+
+# --- def create: --directive-file, --from, --force ---
+
+def test_def_create_from_directive_file(home: Path, tmp_path: Path):
+    df = tmp_path / "rubric.md"
+    df.write_text("custom rubric body from file")
+    result = CliRunner().invoke(
+        eval_group,
+        ["def", "create", "from-file", "--directive-file", str(df)],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    shown = CliRunner().invoke(eval_group, ["def", "show", "from-file"],
+                               catch_exceptions=False)
+    assert "custom rubric body from file" in shown.output
+
+
+def test_def_create_from_existing_def(home: Path):
+    """--from copies the directive of an existing definition."""
+    # Materialize 'default' so we can copy from it
+    CliRunner().invoke(eval_group, ["def", "show", "default"], catch_exceptions=False)
+    result = CliRunner().invoke(
+        eval_group,
+        ["def", "create", "default-copy", "--from", "default"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    shown = CliRunner().invoke(eval_group, ["def", "show", "default-copy"],
+                               catch_exceptions=False)
+    # The copied directive should contain unique text from the shipped default
+    assert "Token efficiency" in shown.output or "evaluate" in shown.output.lower()
+
+
+def test_def_create_from_unknown_errors(home: Path):
+    result = CliRunner().invoke(
+        eval_group,
+        ["def", "create", "bad", "--from", "nonexistent"],
+    )
+    assert result.exit_code != 0
+
+
+def test_def_create_existing_without_force_errors(home: Path):
+    CliRunner().invoke(eval_group,
+                       ["def", "create", "dup", "--directive", "first"],
+                       catch_exceptions=False)
+    result = CliRunner().invoke(eval_group,
+                                ["def", "create", "dup", "--directive", "second"])
+    assert result.exit_code != 0
+    assert "already exists" in result.output
+
+
+def test_def_create_force_overwrites(home: Path):
+    CliRunner().invoke(eval_group,
+                       ["def", "create", "dup2", "--directive", "first-version"],
+                       catch_exceptions=False)
+    result = CliRunner().invoke(
+        eval_group,
+        ["def", "create", "dup2", "--directive", "second-version", "--force"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    shown = CliRunner().invoke(eval_group, ["def", "show", "dup2"],
+                               catch_exceptions=False)
+    assert "second-version" in shown.output
+    assert "first-version" not in shown.output
+
+
+def test_def_show_user_created(home: Path):
+    """def show should display a user-created definition (not just shipped)."""
+    CliRunner().invoke(eval_group,
+                       ["def", "create", "mine", "--directive", "my body"],
+                       catch_exceptions=False)
+    result = CliRunner().invoke(eval_group, ["def", "show", "mine"],
+                                catch_exceptions=False)
+    assert result.exit_code == 0
+    assert "name: mine" in result.output
+    assert "my body" in result.output
+
+
+# --- list: time-window + agent filters + global scope ---
+
+def test_list_no_prefix_iterates_all_sessions(home: Path):
+    _seed_result(home, "abc123", id="A")
+    # Create a second session with its own meta + result
+    sd2 = session_dir(home, "claude", "def456")
+    sd2.mkdir(parents=True)
+    (sd2 / "meta.yaml").write_text(
+        "schema_version: 2\nsession_id: def456\nplatform: claude\n"
+        "cwd: /y\nstarted_at: 2026-05-15T00:00:00Z\nended_at: null\n"
+        "status: open\nevent_count: 1\nlast_seq: -1\nlast_ts: null\n"
+    )
+    EvalStore(sd2).append(EvalResult(
+        id="B", session_id="def456", definition="test", agent="claude",
+        agent_model="", agent_session_id=None,
+        started_at="2026-05-15T00:00:00Z", ended_at="t", duration_ms=0,
+        verdict="pass", summary="",
+    ))
+    result = CliRunner().invoke(eval_group, ["list", "--json"], catch_exceptions=False)
+    assert result.exit_code == 0
+    ids = {json.loads(l)["id"] for l in result.output.splitlines() if l.strip()}
+    assert ids == {"A", "B"}
+
+
+def test_list_filter_by_agent(home: Path):
+    _seed_result(home, "abc123", id="A", agent="claude")
+    _seed_result(home, "abc123", id="B", agent="gemini")
+    result = CliRunner().invoke(
+        eval_group, ["list", "abc", "--agent", "gemini", "--json"],
+        catch_exceptions=False,
+    )
+    ids = [json.loads(l)["id"] for l in result.output.splitlines() if l.strip()]
+    assert ids == ["B"]
+
+
+def test_list_filter_by_time_window(home: Path):
+    _seed_result(home, "abc123", id="A", started_at="2026-05-01T00:00:00Z")
+    _seed_result(home, "abc123", id="B", started_at="2026-05-10T00:00:00Z")
+    _seed_result(home, "abc123", id="C", started_at="2026-05-20T00:00:00Z")
+    result = CliRunner().invoke(
+        eval_group,
+        ["list", "abc", "--since", "2026-05-05", "--until", "2026-05-15", "--json"],
+        catch_exceptions=False,
+    )
+    ids = {json.loads(l)["id"] for l in result.output.splitlines() if l.strip()}
+    assert ids == {"B"}
+
+
+def test_list_empty_returns_clean_message(home: Path):
+    result = CliRunner().invoke(eval_group, ["list", "abc"], catch_exceptions=False)
+    assert result.exit_code == 0
+    assert "No eval results" in result.output
+
+
+def test_list_default_table_includes_overall(home: Path):
+    _seed_result(home, "abc123", scores={"overall": 7.5})
+    result = CliRunner().invoke(eval_group, ["list", "abc"], catch_exceptions=False)
+    assert result.exit_code == 0
+    assert "7.5/10" in result.output
+
+
+# --- show --using ---
+
+def test_show_filtered_by_using_picks_latest_of_definition(home: Path):
+    _seed_result(home, "abc123", id="A", definition="default", summary="default-1")
+    _seed_result(home, "abc123", id="B", definition="token-efficiency",
+                 summary="token-1")
+    _seed_result(home, "abc123", id="C", definition="default", summary="default-2")
+    result = CliRunner().invoke(
+        eval_group, ["show", "abc", "--using", "default"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    # Latest of 'default' is the third seeded → summary "default-2"
+    assert "default-2" in result.output
+    assert "token-1" not in result.output
+
+
+def test_show_unknown_id_errors(home: Path):
+    _seed_result(home, "abc123")
+    result = CliRunner().invoke(eval_group, ["show", "abc", "--id", "NOPE"])
+    assert result.exit_code != 0
+    assert "no eval result" in result.output
+
+
+# --- status global + failed status ---
+
+def test_status_no_prefix_iterates_sessions(home: Path):
+    sd = session_dir(home, "claude", "abc123")
+    EvalStore(sd).write_job("J1", {
+        "job_id": "J1", "session_id": "abc123", "using": "test",
+        "agent": "claude", "status": "running", "started_at": "t", "pid": 99999999,
+    })
+    result = CliRunner().invoke(eval_group, ["status"], catch_exceptions=False)
+    assert result.exit_code == 0
+    assert "J1" in result.output
+
+
+def test_status_failed_job_rendered(home: Path):
+    sd = session_dir(home, "claude", "abc123")
+    EvalStore(sd).write_job("J-FAIL", {
+        "job_id": "J-FAIL", "session_id": "abc123", "using": "test",
+        "agent": "claude", "status": "failed", "started_at": "t",
+        "pid": 1, "error": "RuntimeError: agent exited 1",
+    })
+    result = CliRunner().invoke(eval_group, ["status", "abc"], catch_exceptions=False)
+    assert result.exit_code == 0
+    assert "failed" in result.output
+    assert "J-FAIL" in result.output
+
+
+def test_status_json_output(home: Path):
+    sd = session_dir(home, "claude", "abc123")
+    EvalStore(sd).write_job("JJ", {
+        "job_id": "JJ", "session_id": "abc123", "using": "test",
+        "agent": "claude", "status": "running", "started_at": "t", "pid": 99999999,
+    })
+    result = CliRunner().invoke(eval_group, ["status", "abc", "--json"],
+                                catch_exceptions=False)
+    lines = [json.loads(l) for l in result.output.splitlines() if l.strip()]
+    assert len(lines) == 1
+    # pid-not-alive upgrades status to orphaned
+    assert lines[0]["status"] == "orphaned"
